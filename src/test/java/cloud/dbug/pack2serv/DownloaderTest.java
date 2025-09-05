@@ -1,5 +1,7 @@
 package cloud.dbug.pack2serv;
 
+import cloud.dbug.pack2serv.common.ConstantPool;
+import cloud.dbug.pack2serv.common.CurseForgeBulkDownloader;
 import cloud.dbug.pack2serv.common.Downloader;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
@@ -13,19 +15,10 @@ import java.util.List;
  * @date 2025-09-05
  */
 public class DownloaderTest {
-    /**
-     * 临时目录
-     */
-    private static final String TEMP = "Temp";
-    /**
-     * 根目录
-     */
-    private static final String DIR = System.getProperty("user.dir");
-
     @Test
     public void single() {
         final String url = "https://repo1.maven.org/maven2/info/picocli/picocli/4.7.7/picocli-4.7.7.jar";
-        Downloader.fetch(url, FileUtil.file(DIR, TEMP, StrUtil.subAfter(url, "/", Boolean.TRUE)).toPath());
+        Downloader.fetch(url, FileUtil.file(ConstantPool.DIR, ConstantPool.TEMP, StrUtil.subAfter(url, "/", Boolean.TRUE)).toPath());
     }
 
     @Test
@@ -37,7 +30,16 @@ public class DownloaderTest {
                         "https://repo1.maven.org/maven2/info/picocli/picocli/4.7.4/picocli-4.7.4.jar",
                         "https://repo1.maven.org/maven2/info/picocli/picocli/4.7.3/picocli-4.7.3.jar"
                 ),
-                FileUtil.file(DIR, TEMP).toPath()
+                FileUtil.file(ConstantPool.DIR, ConstantPool.TEMP).toPath()
+        );
+    }
+
+    @Test
+    public void curseForgeBulkDownloader() {
+        System.setProperty("CF_API_KEY", "$2a$10$qpiSV2F4JM/E75n5/m4brOavkvvv0ay.vEh/nE6NCOt/G0gMfYKwS");
+        CurseForgeBulkDownloader.fetch(
+                FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6\\manifest.json").toPath(),
+                FileUtil.file(ConstantPool.DIR, ConstantPool.TEMP).toPath()
         );
     }
 }
