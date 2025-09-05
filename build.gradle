@@ -1,0 +1,93 @@
+plugins {
+    id "java"
+}
+
+group = "cloud.dbug.pack2serv"
+version = "0.1"
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    hutoolVersion = "5.8.40"
+    lombokVersion = "1.18.38"
+    picocliVersion = "4.7.7"
+    junitJupiterVersion = "5.13.4"
+}
+
+dependencies {
+    // ========== bom ==========
+    implementation platform("cn.hutool:hutool-bom:${hutoolVersion}")
+    // ========== hutool ==========
+    implementation "cn.hutool:hutool-core"
+    implementation "cn.hutool:hutool-http"
+    implementation "cn.hutool:hutool-json"
+    // ========== picocli ==========
+    implementation "info.picocli:picocli:${picocliVersion}"
+    // ========== lombok ==========
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    // ========== junit jupiter ==========
+    testImplementation "org.junit.jupiter:junit-jupiter:${junitJupiterVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'cloud.dbug.pack2serv.Pack2Serv',
+                'Implementation-Version': version
+        )
+    }
+}
+
+test {
+    useJUnitPlatform()
+    failOnNoDiscoveredTests = Boolean.FALSE
+    systemProperties = [
+            'junit.jupiter.execution.parallel.enabled'                 : Boolean.TRUE,
+            'junit.jupiter.execution.parallel.mode.default'            : 'concurrent',
+            'junit.jupiter.execution.parallel.config.strategy'         : 'fixed',
+            'junit.jupiter.execution.parallel.config.fixed.parallelism': 4
+    ]
+}
+
+tasks.register("printVersion") {
+    doLast {
+        println project.version
+    }
+}
+
+tasks.register("printJavaVersion") {
+    doLast {
+        println java.sourceCompatibility
+    }
+}
+
+tasks.register("printGradleVersion") {
+    doLast {
+        println gradle.gradleVersion
+    }
+}
+
+tasks.register("printAllVersions") {
+    doLast {
+        println "Project Version: ${project.version}"
+        println "Java Version: ${java.sourceCompatibility}"
+        println "Gradle Version: ${gradle.gradleVersion}"
+    }
+}
