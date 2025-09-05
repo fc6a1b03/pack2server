@@ -36,7 +36,7 @@ public class DownloaderTest {
 
     @Test
     public void curseForgeBulkDownloader() {
-        System.setProperty("CF_API_KEY", "$2a$10$qpiSV2F4JM/E75n5/m4brOavkvvv0ay.vEh/nE6NCOt/G0gMfYKwS");
+        System.setProperty("CF_API_KEY", "123123123");
         CurseForgeBulkDownloader.fetch(
                 FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6\\manifest.json").toPath(),
                 FileUtil.file(ConstantPool.DIR, ConstantPool.TEMP).toPath()
