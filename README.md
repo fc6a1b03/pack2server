@@ -37,7 +37,7 @@ pack2server 是一个将 CurseForge Minecraft 模组整合包一键转换为可�
 
 ```bash
 # 克隆项目
-git clone https://github.com/xuhaifeng/pack2server.git
+git clone https://github.com/fc6a1b03/pack2server.git
 cd pack2server
 
 # 构建项目
@@ -49,7 +49,7 @@ java -jar build/libs/pack2server-*.jar
 
 ### 直接下载
 
-前往 [Releases](https://github.com/xuhaifeng/pack2server/releases) 页面下载最新版本。
+前往 [Releases](https://github.com/fc6a1b03/pack2server/releases) 页面下载最新版本。
 
 ## 使用方法
 

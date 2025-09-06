@@ -16,7 +16,7 @@ import java.util.zip.ZipFile;
 
 /**
  * 服务器mods检测器
- * @author xuhaifeng
+ * @author 拒绝者
  * @date 2025-09-06
  */
 @UtilityClass

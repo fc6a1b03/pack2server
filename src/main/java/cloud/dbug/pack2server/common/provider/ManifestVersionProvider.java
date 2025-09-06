@@ -5,7 +5,7 @@ import picocli.CommandLine;
 
 /**
  * 清单版本提供程序
- * @author xuhaifeng
+ * @author 拒绝者
  * @date 2025-09-05
  */
 public class ManifestVersionProvider implements CommandLine.IVersionProvider {

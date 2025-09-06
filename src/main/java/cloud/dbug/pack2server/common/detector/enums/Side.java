@@ -2,7 +2,7 @@ package cloud.dbug.pack2server.common.detector.enums;
 
 /**
  * 检测结果
- * @author xuhaifeng
+ * @author 拒绝者
  * @date 2025-09-06
  */
 public enum Side {

@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 
 /**
  * 服务加载器-生成器
- * @author xuhaifeng
+ * @author 拒绝者
  * @date 2025-09-06
  */
 @UtilityClass
@@ -97,7 +97,7 @@ public final class LoaderFetcher {
 
     /**
      * 加载器
-     * @author xuhaifeng
+     * @author 拒绝者
      * @date 2025-09-06
      */
     @Data

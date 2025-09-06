@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * 下载器测试
- * @author xuhaifeng
+ * @author 拒绝者
  * @date 2025-09-05
  */
 public class DownloaderTest {

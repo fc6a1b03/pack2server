@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.LongAdder;
 
 /**
  * 下载器
- * @author xuhaifeng
+ * @author 拒绝者
  * @date 2025-09-05
  */
 @UtilityClass
@@ -372,7 +372,7 @@ public class Downloader {
 
     /**
      * 分块区间记录
-     * @author xuhaifeng
+     * @author 拒绝者
      * @date 2025-09-05
      */
     private record Chunk(long start, long end) {

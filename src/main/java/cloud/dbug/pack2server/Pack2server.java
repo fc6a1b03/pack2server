@@ -7,7 +7,7 @@ import picocli.CommandLine;
 
 /**
  * 应用入口
- * @author xuhaifeng
+ * @author 拒绝者
  * @date 2025-09-05
  */
 @CommandLine.Command(

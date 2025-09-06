@@ -38,7 +38,7 @@ import java.util.stream.Stream;
  *   <li>运行环境具备外网访问权限以下载 Mod 与加载器。</li>
  *   <li>JDK 21（适配主流高版本模组加载器）。</li>
  * </ul>
- * @author xuhaifeng
+ * @author 拒绝者
  * @since 2025-09-06
  */
 public class ServerFileTest {

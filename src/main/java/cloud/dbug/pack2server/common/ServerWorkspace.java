@@ -22,7 +22,7 @@ import java.util.function.Function;
 
 /**
  * 服务工作区常量
- * @author xuhaifeng
+ * @author 拒绝者
  * @date 2025-09-05
  */
 public class ServerWorkspace {

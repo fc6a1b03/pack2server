@@ -25,7 +25,7 @@ import java.util.stream.Stream;
  * 将 CurseForge 整合包一键转换为可直接启动的服务器端目录。
  * <p>核心流程：下载→解压→模组批量获取→服务端侧模组过滤→覆盖文件复制→加载器生成→启动脚本写出。
  * 充分压榨多核，零阻塞。
- * @author xuhaifeng
+ * @author 拒绝者
  * @date 2025-09-05
  */
 @CommandLine.Command(

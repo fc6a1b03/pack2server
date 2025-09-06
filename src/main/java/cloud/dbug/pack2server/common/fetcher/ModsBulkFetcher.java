@@ -24,7 +24,7 @@ import java.util.stream.IntStream;
 
 /**
  * 模组批量提取器
- * @author xuhaifeng
+ * @author 拒绝者
  * @date 2025-09-05
  */
 @UtilityClass
@@ -123,7 +123,7 @@ public class ModsBulkFetcher {
 
     /**
      * 模组
-     * @author xuhaifeng
+     * @author 拒绝者
      * @date 2025-09-05
      */
     private record Mod(long projectId, long fileId) {

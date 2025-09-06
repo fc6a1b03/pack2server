@@ -5,7 +5,7 @@ import lombok.Getter;
 
 /**
  * 加载器目标
- * @author xuhaifeng
+ * @author 拒绝者
  * @date 2025-09-06
  */
 @Getter
