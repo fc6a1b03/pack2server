@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "cloud.dbug.pack2serv"
-version = "0.2"
+version = "0.3"
 
 java {
     toolchain {

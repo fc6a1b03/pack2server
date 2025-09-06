@@ -5,6 +5,7 @@ import cloud.dbug.pack2serv.common.CurseForgeBulkDownloader;
 import cloud.dbug.pack2serv.common.Downloader;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -16,12 +17,14 @@ import java.util.List;
  */
 public class DownloaderTest {
     @Test
+    @DisplayName("核心-单个下载")
     public void single() {
         final String url = "https://repo1.maven.org/maven2/info/picocli/picocli/4.7.7/picocli-4.7.7.jar";
         Downloader.fetch(url, FileUtil.file(ConstantPool.DIR, ConstantPool.TEMP, StrUtil.subAfter(url, "/", Boolean.TRUE)).toPath());
     }
 
     @Test
+    @DisplayName("核心-批量下载")
     public void multipart() {
         Downloader.fetchAll(
                 List.of(
@@ -35,8 +38,9 @@ public class DownloaderTest {
     }
 
     @Test
+    @DisplayName("CurseForge批量下载")
     public void curseForgeBulkDownloader() {
-        System.setProperty("CF_API_KEY", "123123123");
+        System.setProperty("CF_API_KEY", "123");
         CurseForgeBulkDownloader.fetch(
                 FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6\\manifest.json").toPath(),
                 FileUtil.file(ConstantPool.DIR, ConstantPool.TEMP).toPath()

@@ -16,13 +16,13 @@ import picocli.CommandLine;
         mixinStandardHelpOptions = true,
         subcommands = {ConvertCommand.class}
 )
-public class Pack2Serv implements Runnable {
+public class Pack2server implements Runnable {
     @Override
     public void run() {
         System.out.println("运行“pack2serv convert --help”了解用法");
     }
 
     public static void main(final String[] args) {
-        System.exit(new CommandLine(new Pack2Serv()).execute(args));
+        System.exit(new CommandLine(new Pack2server()).execute(args));
     }
 }

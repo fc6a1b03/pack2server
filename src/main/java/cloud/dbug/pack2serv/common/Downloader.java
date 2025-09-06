@@ -2,6 +2,7 @@ package cloud.dbug.pack2serv.common;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Console;
+import cn.hutool.core.net.URLDecoder;
 import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.StrUtil;
 import lombok.SneakyThrows;
@@ -15,6 +16,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -119,18 +121,18 @@ public class Downloader {
         EXECUTOR.submit(() -> {
             try {
                 while (GLOBAL_BYTES.sum() < GLOBAL_TOTAL.sum()) {
-                    ThreadUtil.sleep(1000);
+                    //定期检查进度
+                    ThreadUtil.sleep(500);
                     printTotal();
                 }
             } finally {
-                // 保证 100% 那一行出现
                 printTotal();
             }
         });
         // 并发下载
         return uris.stream().filter(Objects::nonNull)
                 .map(u ->
-                        EXECUTOR.submit(() -> fetch(u, targetDir.resolve(StrUtil.subAfter(u, "/", Boolean.TRUE)), Boolean.TRUE))
+                        EXECUTOR.submit(() -> fetch(u, targetDir.resolve(URLDecoder.decode(StrUtil.subAfter(u, "/", Boolean.TRUE), StandardCharsets.UTF_8)), Boolean.TRUE))
                 )
                 .map(Downloader::get).filter(r -> r == 0).count();
     }
@@ -145,7 +147,7 @@ public class Downloader {
         if (StrUtil.isEmpty(uri)) {
             return null;
         }
-        return fetch(uri, target, true) == 0 ? target : null;
+        return fetch(uri, target, Boolean.TRUE) == 0 ? target : null;
     }
 
     /**
@@ -176,7 +178,6 @@ public class Downloader {
             } else {
                 downloadMulti(uri, target, total, resume, fileAdder);
             }
-            /* 强制置为 100% 并打印 */
             fileAdder.reset();
             fileAdder.add(total);
             printFile(target);
@@ -196,9 +197,7 @@ public class Downloader {
      * @throws IOException          IOException
      * @throws InterruptedException 中断异常
      */
-    private static void downloadSingle(final String uri,
-                                       final Path target,
-                                       final boolean resume,
+    private static void downloadSingle(final String uri, final Path target, final boolean resume,
                                        final LongAdder fileAdder) throws IOException, InterruptedException {
         final long already = resume && Files.exists(target) ? Files.size(target) : 0;
         final HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(uri)).GET();
@@ -332,7 +331,7 @@ public class Downloader {
         }
         LAST_GLOBAL.set(done);
         Console.log(
-                ">>> 总计 {}/{} ({}%)  速度:{}",
+                ">>> 进度 | {}/{} ({}%) | 速度:{}",
                 format(done), format(total), (int) (done * 100 / total),
                 formatSpeed(done * 1000 / Math.max(1, System.currentTimeMillis() - START_MS))
         );
@@ -347,8 +346,7 @@ public class Downloader {
         final Long total = FILE_TOTAL.get(target);
         if (Objects.isNull(fileAdder) || Objects.isNull(total) || total <= 0) return;
         final long done = fileAdder.sum();
-        final int pct = (int) (done * 100 / total);
-        Console.log(">>> 完成 {}  {}/{} ({}%)", target.getFileName(), format(done), format(total), pct);
+        Console.log(">>> 完成 | {} | {}/{} | ({}%)", target.getFileName(), format(done), format(total), (int) (done * 100 / total));
     }
 
     /**
