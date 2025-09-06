@@ -1,6 +1,6 @@
 package cloud.dbug.pack2server.common.downloader;
 
-import cloud.dbug.pack2server.common.ConstantPool;
+import cloud.dbug.pack2server.common.ServerWorkspace;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.net.URLDecoder;
@@ -100,7 +100,7 @@ public class Downloader {
         if (CollUtil.isEmpty(uris)) {
             return 0;
         }
-        ConstantPool.ensure(targetDir);
+        ServerWorkspace.ensure(targetDir);
         // 初始化计数器
         GLOBAL_BYTES.reset();
         GLOBAL_TOTAL.reset();
@@ -165,7 +165,7 @@ public class Downloader {
         if (StrUtil.isEmpty(uri)) return 0;
         try {
             final long total = contentLength(uri);
-            ConstantPool.ensure(target);
+            ServerWorkspace.ensure(target);
             // 初始化该文件进度
             FILE_TOTAL.put(target, total);
             final LongAdder fileAdder = new LongAdder();

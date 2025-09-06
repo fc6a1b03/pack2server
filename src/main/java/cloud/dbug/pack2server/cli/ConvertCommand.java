@@ -1,6 +1,6 @@
 package cloud.dbug.pack2server.cli;
 
-import cloud.dbug.pack2server.common.ConstantPool;
+import cloud.dbug.pack2server.common.ServerWorkspace;
 import cloud.dbug.pack2server.common.downloader.Downloader;
 import cloud.dbug.pack2server.entity.Source;
 import cn.hutool.core.io.FileUtil;
@@ -32,7 +32,7 @@ public class ConvertCommand implements Callable<Integer> {
     public Integer call() {
         // 获取模组包路径
         final Path path = Opt.ofNullable(source.getZip())
-                .orElseGet(() -> Downloader.fetch(source.getUrl(), FileUtil.file(output.toFile(), ConstantPool.MOD, source.getName()).toPath()));
+                .orElseGet(() -> Downloader.fetch(source.getUrl(), FileUtil.file(output.toFile(), ServerWorkspace.MOD, source.getName()).toPath()));
 
         return 0;
     }

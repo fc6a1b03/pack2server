@@ -1,6 +1,6 @@
 package cloud.dbug.pack2server.common.fetcher;
 
-import cloud.dbug.pack2server.common.ConstantPool;
+import cloud.dbug.pack2server.common.ServerWorkspace;
 import cloud.dbug.pack2server.common.downloader.Downloader;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Console;
@@ -56,7 +56,7 @@ public class ModsBulkFetcher {
             Console.log("WARN | MANIFEST_NOT_FOUND | 清单文件不存在，任务终止。 | path={}", manifest.toAbsolutePath());
             return;
         }
-        ConstantPool.ensure(saveDir);
+        ServerWorkspace.ensure(saveDir);
         // 解析模组
         final List<Mod> mods = parseMods(manifest);
         Console.log("INFO | PARSE_COMPLETE | 模组清单，解析完成 | mods={}", mods.size());

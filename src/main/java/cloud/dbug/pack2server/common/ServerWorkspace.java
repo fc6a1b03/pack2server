@@ -21,11 +21,11 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * 常量池
+ * 服务工作区常量
  * @author xuhaifeng
  * @date 2025-09-05
  */
-public class ConstantPool {
+public class ServerWorkspace {
     /**
      * 模组目录
      */
@@ -41,7 +41,7 @@ public class ConstantPool {
     /**
      * 测试目录
      */
-    public static final File TEST_DIR = FileUtil.file(ConstantPool.HOME, ConstantPool.TEMP);
+    public static final File TEST_DIR = FileUtil.file(ServerWorkspace.HOME, ServerWorkspace.TEMP);
     /**
      * 服务目录
      */
@@ -54,7 +54,7 @@ public class ConstantPool {
      * 构建基础目录与文件
      */
     public static final Consumer<File> BUILD_DIR = parent ->
-            SERVER_DIRS.forEach(dir -> ConstantPool.ensure(Paths.get(dir), () -> {
+            SERVER_DIRS.forEach(dir -> ServerWorkspace.ensure(Paths.get(dir), () -> {
                 FileUtil.mkdir(FileUtil.file(parent, dir));
                 FileUtil.writeUtf8String("eula=true", FileUtil.file(parent, "eula.txt"));
             }));
@@ -62,7 +62,7 @@ public class ConstantPool {
      * 复制目录
      */
     public static final Supplier2<File, File, File> COPY_DIR = (src, dest) -> {
-        ConstantPool.ensure(dest.toPath());
+        ServerWorkspace.ensure(dest.toPath());
         return FileUtil.copyContent(src, dest, Boolean.TRUE);
     };
     /**
@@ -92,7 +92,7 @@ public class ConstantPool {
     /**
      * 确保目录
      * @param path     路径
-     * @param consumer 消费者
+     * @param runnable 运行
      */
     @SneakyThrows
     public static void ensure(final Path path, final Runnable runnable) {

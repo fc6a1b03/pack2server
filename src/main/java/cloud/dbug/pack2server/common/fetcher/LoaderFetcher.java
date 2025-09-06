@@ -1,6 +1,6 @@
 package cloud.dbug.pack2server.common.fetcher;
 
-import cloud.dbug.pack2server.common.ConstantPool;
+import cloud.dbug.pack2server.common.ServerWorkspace;
 import cloud.dbug.pack2server.common.downloader.Downloader;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.CharsetUtil;
@@ -44,7 +44,7 @@ public final class LoaderFetcher {
      * @return Loader
      */
     public static Loader exec(final Path manifest, final Path work) {
-        ConstantPool.ensure(work);
+        ServerWorkspace.ensure(work);
         return CompletableFuture.supplyAsync(() -> parse(manifest, work), EXECUTOR)
                 .thenApplyAsync(loader -> loader.download(work), EXECUTOR)
                 .thenApplyAsync(Function.identity(), EXECUTOR).join();
@@ -134,7 +134,7 @@ public final class LoaderFetcher {
         public List<String> cmd() {
             // 命令列表：java -jar <jar> --nogui --universe <cache>
             return List.of(
-                    ConstantPool.JAVA_PROGRAM, "-jar", work.resolve(jarName).toString(), "--nogui", "--universe", work.resolve("cache").toString()
+                    ServerWorkspace.JAVA_PROGRAM, "-jar", work.resolve(jarName).toString(), "--nogui", "--universe", work.resolve("cache").toString()
             );
         }
 
