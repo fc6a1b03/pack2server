@@ -1,4 +1,4 @@
-package cloud.dbug.pack2serv.entity;
+package cloud.dbug.pack2server.entity;
 
 import cn.hutool.core.lang.Opt;
 import cn.hutool.core.util.StrUtil;

@@ -1,4 +1,4 @@
-package cloud.dbug.pack2serv.common.detector.enums;
+package cloud.dbug.pack2server.common.detector.enums;
 
 /**
  * 检测结果

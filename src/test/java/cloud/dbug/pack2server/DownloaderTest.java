@@ -1,8 +1,8 @@
-package cloud.dbug.pack2serv;
+package cloud.dbug.pack2server;
 
-import cloud.dbug.pack2serv.common.ConstantPool;
-import cloud.dbug.pack2serv.common.downloader.CurseForgeBulkDownloader;
-import cloud.dbug.pack2serv.common.downloader.Downloader;
+import cloud.dbug.pack2server.common.ConstantPool;
+import cloud.dbug.pack2server.common.downloader.CurseForgeBulkDownloader;
+import cloud.dbug.pack2server.common.downloader.Downloader;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import org.junit.jupiter.api.DisplayName;
@@ -43,7 +43,7 @@ public class DownloaderTest {
         System.setProperty("CF_API_KEY", "123");
         CurseForgeBulkDownloader.fetch(
                 FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6\\manifest.json").toPath(),
-                FileUtil.file(ConstantPool.DIR, ConstantPool.TEMP).toPath()
+                ConstantPool.TEST_DIR.toPath()
         );
     }
 }

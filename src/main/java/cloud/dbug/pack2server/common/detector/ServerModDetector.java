@@ -1,6 +1,6 @@
-package cloud.dbug.pack2serv.common.detector;
+package cloud.dbug.pack2server.common.detector;
 
-import cloud.dbug.pack2serv.common.detector.enums.Side;
+import cloud.dbug.pack2server.common.detector.enums.Side;
 import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;

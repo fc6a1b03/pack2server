@@ -1,6 +1,6 @@
-package cloud.dbug.pack2serv.common.downloader;
+package cloud.dbug.pack2server.common.downloader;
 
-import cloud.dbug.pack2serv.common.ConstantPool;
+import cloud.dbug.pack2server.common.ConstantPool;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.lang.Opt;

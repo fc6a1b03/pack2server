@@ -1,7 +1,7 @@
-package cloud.dbug.pack2serv;
+package cloud.dbug.pack2server;
 
-import cloud.dbug.pack2serv.cli.ConvertCommand;
-import cloud.dbug.pack2serv.common.provider.ManifestVersionProvider;
+import cloud.dbug.pack2server.cli.ConvertCommand;
+import cloud.dbug.pack2server.common.provider.ManifestVersionProvider;
 import picocli.CommandLine;
 
 /**

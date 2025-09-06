@@ -1,4 +1,4 @@
-package cloud.dbug.pack2serv.common.provider;
+package cloud.dbug.pack2server.common.provider;
 
 import cn.hutool.core.lang.Opt;
 import picocli.CommandLine;
