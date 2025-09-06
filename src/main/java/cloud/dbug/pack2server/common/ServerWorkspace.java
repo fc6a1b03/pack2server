@@ -35,6 +35,14 @@ public class ServerWorkspace {
      */
     public static final String TEMP = "Temp";
     /**
+     * 模组包其余文件目录
+     */
+    public static final String OVERRIDES = "overrides";
+    /**
+     * 模组清单文件名
+     */
+    public static final String MANIFEST = "manifest.json";
+    /**
      * 根目录
      */
     public static final String HOME = System.getProperty("user.dir");

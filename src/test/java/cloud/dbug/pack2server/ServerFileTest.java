@@ -61,7 +61,7 @@ public class ServerFileTest {
     public void modsBulkFetcher() {
         System.setProperty("CF_API_KEY", "123");
         ModsBulkFetcher.fetch(
-                FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6\\manifest.json").toPath(),
+                FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6", ServerWorkspace.MANIFEST).toPath(),
                 FileUtil.file(ServerWorkspace.TEST_DIR, ServerWorkspace.MOD).toPath()
         );
     }
@@ -81,7 +81,7 @@ public class ServerFileTest {
     @DisplayName("模组资源目录复制")
     public void copyResourceDir() {
         ServerWorkspace.COPY_DIR.get(
-                FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6\\overrides"),
+                FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6", ServerWorkspace.OVERRIDES),
                 ServerWorkspace.TEST_DIR
         );
     }
