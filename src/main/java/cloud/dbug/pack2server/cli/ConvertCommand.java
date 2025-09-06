@@ -30,17 +30,17 @@ import java.util.stream.Stream;
  */
 @CommandLine.Command(
         name = "convert",
-        description = "将 CurseForge 模组包转换为服务器目录",
+        description = "Convert CurseForge mod package to server directory",
         mixinStandardHelpOptions = true
 )
 public class ConvertCommand implements Callable<Integer> {
-    @CommandLine.ArgGroup(multiplicity = "1", heading = "输入源（二选一）:%n")
+    @CommandLine.ArgGroup(multiplicity = "1", heading = "Input source (choose one from two):%n")
     private Source source;
-    @CommandLine.Option(names = {"-f", "--force"}, description = "覆盖现有目录")
+    @CommandLine.Option(names = {"-f", "--force"}, description = "overwrite existing directory")
     private boolean forceOverwrite;
-    @CommandLine.Option(names = {"-k", "--key"}, description = "CurseForge Api密钥（支持env:CF_API_KEY）")
+    @CommandLine.Option(names = {"-k", "--key"}, description = "CurseForge API Key (supports env: CF_API_KEY)")
     private String cfApiKey;
-    @CommandLine.Option(names = {"-o", "--output"}, defaultValue = "./server", description = "输出服务器目录（默认：./server）")
+    @CommandLine.Option(names = {"-o", "--output"}, defaultValue = "./server", description = "Output server directory (default:./server)")
     private Path serverOutputDir;
 
     @Override

@@ -12,7 +12,7 @@ import picocli.CommandLine;
  */
 @CommandLine.Command(
         name = "pack2serv",
-        header = "CurseForge 模组包 -> 可运行的服务器目录",
+        header = "CurseForge mod package -> runnable server directory",
         versionProvider = ManifestVersionProvider.class,
         mixinStandardHelpOptions = true,
         subcommands = {ConvertCommand.class}
@@ -20,7 +20,7 @@ import picocli.CommandLine;
 public class Pack2server implements Runnable {
     @Override
     public void run() {
-        Console.log("运行“pack2serv convert --help”了解用法");
+        Console.log("Run 'pack2server convert - h' to understand its usage");
     }
 
     public static void main(final String[] args) {

@@ -1,5 +1,6 @@
 plugins {
     id "java"
+    id "com.gradleup.shadow" version "9.1.0"
 }
 
 group = "cloud.dbug.pack2server"
@@ -52,11 +53,16 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
 }
 
-jar {
+shadowJar {
+    mergeServiceFiles()
     manifest {
+        archiveVersion = ''
+        archiveClassifier = ''
+        archiveBaseName = 'pack2server'
         attributes(
-                'Main-Class': 'cloud.dbug.pack2serv.Pack2Serv',
-                'Implementation-Version': version
+                'Main-Class': "${project.group}.Pack2server",
+                'Implementation-Version': project.version,
+                'Created-By': "Gradle ${gradle.gradleVersion} + UTF-8"
         )
     }
 }
@@ -70,6 +76,10 @@ test {
             'junit.jupiter.execution.parallel.config.strategy'         : 'fixed',
             'junit.jupiter.execution.parallel.config.fixed.parallelism': 4
     ]
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
 }
 
 tasks.named("check") {

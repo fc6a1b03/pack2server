@@ -17,7 +17,7 @@ public class ManifestVersionProvider implements CommandLine.IVersionProvider {
     public String[] getVersion() {
         return new String[]{
                 Opt.ofBlankAble(getClass().getPackage().getImplementationVersion())
-                        .map("pack2serv %s"::formatted)
+                        .map("pack2server %s"::formatted)
                         .orElse("dev")
         };
     }
