@@ -38,7 +38,7 @@ public class ConvertCommand implements Callable<Integer> {
     private Source source;
     @CommandLine.Option(names = {"-f", "--force"}, description = "overwrite existing directory")
     private boolean forceOverwrite;
-    @CommandLine.Option(names = {"-k", "--key"}, description = "CurseForge API Key (supports env: CF_API_KEY)")
+    @CommandLine.Option(names = {"-k", "--key"}, description = "CurseForge API Key (supports env: CF_API_KEY) Note: wrap the key in single quotes, e.g. 'your-key'.")
     private String cfApiKey;
     @CommandLine.Option(names = {"-o", "--output"}, defaultValue = "./server", description = "Output server directory (default:./server)")
     private Path serverOutputDir;
