@@ -15,14 +15,14 @@ import java.util.List;
  */
 public class DownloaderTest {
     @Test
-    @DisplayName("核心-单个下载")
+    @DisplayName("单个下载")
     public void single() {
         final String url = "https://repo1.maven.org/maven2/info/picocli/picocli/4.7.7/picocli-4.7.7.jar";
-        Downloader.fetch(url, FileUtil.file(ServerWorkspace.JAVA_PROGRAM, ServerWorkspace.TEMP, ServerWorkspace.PARSED_NAME.apply(url)).toPath());
+        Downloader.fetch(url, FileUtil.file(ServerWorkspace.USER_HOME, ServerWorkspace.TEMP, ServerWorkspace.PARSED_NAME.apply(url)).toPath());
     }
 
     @Test
-    @DisplayName("核心-批量下载")
+    @DisplayName("批量下载")
     public void multipart() {
         Downloader.fetchAll(
                 List.of(

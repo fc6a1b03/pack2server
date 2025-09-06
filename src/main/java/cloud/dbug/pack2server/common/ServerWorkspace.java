@@ -45,11 +45,11 @@ public class ServerWorkspace {
     /**
      * 根目录
      */
-    public static final String HOME = System.getProperty("user.dir");
+    public static final String USER_HOME = System.getProperty("user.dir");
     /**
      * 测试目录
      */
-    public static final File TEST_DIR = FileUtil.file(ServerWorkspace.HOME, ServerWorkspace.TEMP);
+    public static final File TEST_DIR = FileUtil.file(ServerWorkspace.USER_HOME, ServerWorkspace.TEMP);
     /**
      * 服务目录
      */

@@ -72,10 +72,8 @@ test {
     ]
 }
 
-tasks.named('build') {
-    dependsOn tasks.named('test') {
-        enabled = false
-    }
+tasks.named("check") {
+    dependsOn.removeAll { it.name == "test" }
 }
 
 tasks.register("printVersion") {
