@@ -57,18 +57,18 @@ java -jar build/libs/pack2server-*.jar
 
 ```bash
 # 通过 URL 转换整合包
-java -jar pack2server-*.jar convert -u "整合包下载链接" -o "./server"
+java -jar pack2server-*.jar convert -u '整合包下载链接' -o './server'
 
 # 通过本地文件转换整合包
-java -jar pack2server-*.jar convert -z "本地整合包路径" -o "./server"
+java -jar pack2server-*.jar convert -z '本地整合包路径' -o './server'
 
 # 强制覆盖已有目录
-java -jar pack2server-*.jar convert -u "整合包下载链接" -o "./server" -f
+java -jar pack2server-*.jar convert -u '整合包下载链接' -o './server' -f
 
 # 提供 CurseForge API 密钥
-java -jar pack2server-*.jar convert -u "整合包下载链接" -k "你的API密钥" -o "./server"
+java -jar pack2server-*.jar convert -u '整合包下载链接' -k '你的API密钥' -o './server'
 # 或使用环境变量
-CF_API_KEY="你的API密钥" java -jar pack2server-*.jar convert -u "整合包下载链接" -o "./server"
+CF_API_KEY='你的API密钥' java -jar pack2server-*.jar convert -u '整合包下载链接' -o './server'
 ```
 
 ### 启动服务器
