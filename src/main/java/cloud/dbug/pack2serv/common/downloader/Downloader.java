@@ -1,9 +1,11 @@
-package cloud.dbug.pack2serv.common;
+package cloud.dbug.pack2serv.common.downloader;
 
+import cloud.dbug.pack2serv.common.ConstantPool;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.net.URLDecoder;
 import cn.hutool.core.thread.ThreadUtil;
+import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.core.util.StrUtil;
 import lombok.SneakyThrows;
 
@@ -16,7 +18,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -132,7 +133,7 @@ public class Downloader {
         // 并发下载
         return uris.stream().filter(Objects::nonNull)
                 .map(u ->
-                        EXECUTOR.submit(() -> fetch(u, targetDir.resolve(URLDecoder.decode(StrUtil.subAfter(u, "/", Boolean.TRUE), StandardCharsets.UTF_8)), Boolean.TRUE))
+                        EXECUTOR.submit(() -> fetch(u, targetDir.resolve(URLDecoder.decode(StrUtil.subAfter(u, "/", Boolean.TRUE), CharsetUtil.CHARSET_UTF_8)), Boolean.TRUE))
                 )
                 .map(Downloader::get).filter(r -> r == 0).count();
     }
@@ -331,7 +332,7 @@ public class Downloader {
         }
         LAST_GLOBAL.set(done);
         Console.log(
-                ">>> 进度 | {}/{} ({}%) | 速度:{}",
+                ">>> 进度 | {}/{} ({}%) | 速度: {}",
                 format(done), format(total), (int) (done * 100 / total),
                 formatSpeed(done * 1000 / Math.max(1, System.currentTimeMillis() - START_MS))
         );

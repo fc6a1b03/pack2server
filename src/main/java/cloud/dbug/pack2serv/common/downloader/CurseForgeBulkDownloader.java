@@ -1,5 +1,7 @@
-package cloud.dbug.pack2serv.common;
+package cloud.dbug.pack2serv.common.downloader;
 
+import cloud.dbug.pack2serv.common.ConstantPool;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.lang.Opt;
 import cn.hutool.core.util.StrUtil;
@@ -11,8 +13,12 @@ import cn.hutool.json.JSONUtil;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * CurseForge批量下载器
@@ -87,12 +93,13 @@ public class CurseForgeBulkDownloader {
      * @return {@link Map }<{@link Long }, {@link String }>
      */
     private static Map<Long, String> queryDownloadUrl(final List<Mod> mods) {
-        return mods.stream()
-                .filter(Objects::nonNull)
-                // 50 一组，矢量化分块
-                .collect(Collectors.groupingBy(m -> m.fileId / GROUP, LinkedHashMap::new, Collectors.mapping(m -> m.fileId, Collectors.toList())))
-                .values().parallelStream()
-                .map(sub -> JSONUtil.createObj().set("fileIds", sub).toString())
+        if (CollUtil.isEmpty(mods)) {
+            return Map.of();
+        }
+        return IntStream.iterate(0, i -> i < mods.size(), i -> i + GROUP)
+                .parallel().mapToObj(i -> mods.subList(i, Math.min(i + GROUP, mods.size())))
+                .map(list -> list.stream().filter(Objects::nonNull).map(Mod::fileId))
+                .map(sub -> JSONUtil.createObj().set("fileIds", sub.toList()).toString())
                 .flatMap(body -> {
                     try (final HttpResponse resp = HttpRequest.post(CF_API_URL)
                             .header("x-api-key", CF_API_KEY)

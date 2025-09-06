@@ -1,7 +1,7 @@
 package cloud.dbug.pack2serv.cli;
 
 import cloud.dbug.pack2serv.common.ConstantPool;
-import cloud.dbug.pack2serv.common.Downloader;
+import cloud.dbug.pack2serv.common.downloader.Downloader;
 import cloud.dbug.pack2serv.entity.Source;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.lang.Opt;

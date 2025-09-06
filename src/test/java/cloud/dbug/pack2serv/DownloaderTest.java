@@ -1,8 +1,8 @@
 package cloud.dbug.pack2serv;
 
 import cloud.dbug.pack2serv.common.ConstantPool;
-import cloud.dbug.pack2serv.common.CurseForgeBulkDownloader;
-import cloud.dbug.pack2serv.common.Downloader;
+import cloud.dbug.pack2serv.common.downloader.CurseForgeBulkDownloader;
+import cloud.dbug.pack2serv.common.downloader.Downloader;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import org.junit.jupiter.api.DisplayName;
