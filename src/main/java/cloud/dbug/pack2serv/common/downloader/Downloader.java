@@ -8,6 +8,7 @@ import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.core.util.StrUtil;
 import lombok.SneakyThrows;
+import lombok.experimental.UtilityClass;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,6 +34,7 @@ import java.util.concurrent.atomic.LongAdder;
  * @author xuhaifeng
  * @date 2025-09-05
  */
+@UtilityClass
 public class Downloader {
     /**
      * 每块 4 MB
@@ -82,9 +84,6 @@ public class Downloader {
      * VALUE: 该文件总字节数
      */
     private static final ConcurrentMap<Path, Long> FILE_TOTAL = new ConcurrentHashMap<>();
-
-    private Downloader() {
-    }
 
     /**
      * 批量下载（并发）<br/>

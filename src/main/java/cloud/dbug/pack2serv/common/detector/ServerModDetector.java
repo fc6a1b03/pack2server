@@ -5,6 +5,7 @@ import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import lombok.experimental.UtilityClass;
 
 import java.nio.file.Path;
 import java.util.Locale;
@@ -18,11 +19,8 @@ import java.util.zip.ZipFile;
  * @author xuhaifeng
  * @date 2025-09-06
  */
+@UtilityClass
 public class ServerModDetector {
-
-    private ServerModDetector() {
-    }
-
     /**
      * 检测
      * @param jar jar路径

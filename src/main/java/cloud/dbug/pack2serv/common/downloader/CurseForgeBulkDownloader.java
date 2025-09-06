@@ -9,6 +9,7 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import lombok.experimental.UtilityClass;
 
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -25,6 +26,7 @@ import java.util.stream.IntStream;
  * @author xuhaifeng
  * @date 2025-09-05
  */
+@UtilityClass
 public class CurseForgeBulkDownloader {
     /**
      * 组
