@@ -1,6 +1,7 @@
-package cloud.dbug.pack2server.common.downloader;
+package cloud.dbug.pack2server.common.fetcher;
 
 import cloud.dbug.pack2server.common.ConstantPool;
+import cloud.dbug.pack2server.common.downloader.Downloader;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.lang.Opt;
@@ -22,12 +23,12 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * CurseForge批量下载器
+ * 模组批量提取器
  * @author xuhaifeng
  * @date 2025-09-05
  */
 @UtilityClass
-public class CurseForgeBulkDownloader {
+public class ModsBulkFetcher {
     /**
      * 组
      */

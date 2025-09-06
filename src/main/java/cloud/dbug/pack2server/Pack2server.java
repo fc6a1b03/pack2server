@@ -2,6 +2,7 @@ package cloud.dbug.pack2server;
 
 import cloud.dbug.pack2server.cli.ConvertCommand;
 import cloud.dbug.pack2server.common.provider.ManifestVersionProvider;
+import cn.hutool.core.lang.Console;
 import picocli.CommandLine;
 
 /**
@@ -19,7 +20,7 @@ import picocli.CommandLine;
 public class Pack2server implements Runnable {
     @Override
     public void run() {
-        System.out.println("运行“pack2serv convert --help”了解用法");
+        Console.log("运行“pack2serv convert --help”了解用法");
     }
 
     public static void main(final String[] args) {

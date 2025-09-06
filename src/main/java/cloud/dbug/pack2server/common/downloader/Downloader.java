@@ -139,7 +139,7 @@ public class Downloader {
 
     /**
      * 单文件下载公开入口（默认允许断点续传）
-     * @param uri    统一资源标识符
+     * @param uri    文件地址
      * @param target 目标
      * @return {@link Path }
      */
@@ -156,7 +156,7 @@ public class Downloader {
      * 2. 初始化该文件的进度计数器<br/>
      * 3. 路由到单线程 or 分块下载<br/>
      * 4. 下载完成后打印 100%
-     * @param uri    统一资源标识符
+     * @param uri    文件地址
      * @param target 目标
      * @param resume 简历
      * @return int
@@ -165,9 +165,6 @@ public class Downloader {
         if (StrUtil.isEmpty(uri)) return 0;
         try {
             final long total = contentLength(uri);
-            if (total < 0) {
-                throw new IOException("无法获取文件大小");
-            }
             ConstantPool.ensure(target);
             // 初始化该文件进度
             FILE_TOTAL.put(target, total);
@@ -190,7 +187,7 @@ public class Downloader {
 
     /**
      * 单线程直线下载
-     * @param uri       统一资源标识符
+     * @param uri       文件地址
      * @param target    目标
      * @param resume    简历
      * @param fileAdder 文件加法器
@@ -222,7 +219,7 @@ public class Downloader {
 
     /**
      * 分块并发下载
-     * @param uri       统一资源标识符
+     * @param uri       文件地址
      * @param target    目标
      * @param total     总计
      * @param resume    简历
@@ -265,7 +262,7 @@ public class Downloader {
 
     /**
      * 下载单个分块
-     * @param uri       统一资源标识符
+     * @param uri       文件地址
      * @param target    目标
      * @param chunk     块
      * @param fileAdder 文件加法器
@@ -292,7 +289,7 @@ public class Downloader {
 
     /**
      * 获取远程文件大小
-     * @param uri 统一资源标识符
+     * @param uri 文件地址
      * @return long
      * @throws IOException          IOException
      * @throws InterruptedException 中断异常

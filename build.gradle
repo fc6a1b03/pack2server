@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "cloud.dbug.pack2server"
-version = "0.5"
+version = "0.6"
 
 java {
     toolchain {
@@ -25,6 +25,7 @@ ext {
     hutoolVersion = "5.8.40"
     lombokVersion = "1.18.38"
     picocliVersion = "4.7.7"
+    jsonpathVersion = "2.9.0"
     junitJupiterVersion = "5.13.4"
 }
 
@@ -35,6 +36,8 @@ dependencies {
     implementation "cn.hutool:hutool-core"
     implementation "cn.hutool:hutool-http"
     implementation "cn.hutool:hutool-json"
+    implementation "cn.hutool:hutool-system"
+    implementation "com.jayway.jsonpath:json-path:${jsonpathVersion}"
     // ========== picocli ==========
     implementation "info.picocli:picocli:${picocliVersion}"
     // ========== lombok ==========

@@ -21,5 +21,21 @@ public enum Side {
     /**
      * 两者
      */
-    BOTH
+    BOTH;
+
+    /**
+     * 是服务
+     * @return {@link Boolean }
+     */
+    public Boolean isServer() {
+        return Side.SERVER.equals(this) || Side.BOTH.equals(this) || !Side.NONE.equals(this);
+    }
+
+    /**
+     * 是客户
+     * @return {@link Boolean }
+     */
+    public Boolean isClient() {
+        return Side.CLIENT.equals(this) || Side.BOTH.equals(this);
+    }
 }

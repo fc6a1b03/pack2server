@@ -1,7 +1,7 @@
 package cloud.dbug.pack2server.entity;
 
+import cloud.dbug.pack2server.common.ConstantPool;
 import cn.hutool.core.lang.Opt;
-import cn.hutool.core.util.StrUtil;
 import lombok.Data;
 import picocli.CommandLine;
 
@@ -33,6 +33,6 @@ public class Source {
      * @return {@link String }
      */
     public String getName() {
-        return StrUtil.subAfter(getUrl(), "/", Boolean.TRUE);
+        return ConstantPool.getName(getUrl());
     }
 }

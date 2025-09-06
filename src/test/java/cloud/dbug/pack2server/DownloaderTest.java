@@ -1,10 +1,8 @@
 package cloud.dbug.pack2server;
 
 import cloud.dbug.pack2server.common.ConstantPool;
-import cloud.dbug.pack2server.common.downloader.CurseForgeBulkDownloader;
 import cloud.dbug.pack2server.common.downloader.Downloader;
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.util.StrUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +18,7 @@ public class DownloaderTest {
     @DisplayName("核心-单个下载")
     public void single() {
         final String url = "https://repo1.maven.org/maven2/info/picocli/picocli/4.7.7/picocli-4.7.7.jar";
-        Downloader.fetch(url, FileUtil.file(ConstantPool.DIR, ConstantPool.TEMP, StrUtil.subAfter(url, "/", Boolean.TRUE)).toPath());
+        Downloader.fetch(url, FileUtil.file(ConstantPool.JAVA_PROGRAM, ConstantPool.TEMP, ConstantPool.getName(url)).toPath());
     }
 
     @Test
@@ -33,17 +31,7 @@ public class DownloaderTest {
                         "https://repo1.maven.org/maven2/info/picocli/picocli/4.7.4/picocli-4.7.4.jar",
                         "https://repo1.maven.org/maven2/info/picocli/picocli/4.7.3/picocli-4.7.3.jar"
                 ),
-                FileUtil.file(ConstantPool.DIR, ConstantPool.TEMP).toPath()
-        );
-    }
-
-    @Test
-    @DisplayName("CurseForge批量下载")
-    public void curseForgeBulkDownloader() {
-        System.setProperty("CF_API_KEY", "123");
-        CurseForgeBulkDownloader.fetch(
-                FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6\\manifest.json").toPath(),
-                ConstantPool.TEST_DIR.toPath()
+                FileUtil.file(ConstantPool.JAVA_PROGRAM, ConstantPool.TEMP).toPath()
         );
     }
 }
