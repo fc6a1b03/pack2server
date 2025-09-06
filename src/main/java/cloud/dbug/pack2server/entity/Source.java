@@ -33,6 +33,6 @@ public class Source {
      * @return {@link String }
      */
     public String getName() {
-        return ConstantPool.getName(getUrl());
+        return ConstantPool.PARSED_NAME.apply(getUrl());
     }
 }

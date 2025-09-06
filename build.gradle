@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "cloud.dbug.pack2server"
-version = "0.6"
+version = "0.7"
 
 java {
     toolchain {
@@ -26,6 +26,7 @@ ext {
     lombokVersion = "1.18.38"
     picocliVersion = "4.7.7"
     jsonpathVersion = "2.9.0"
+    compressVersion = "1.28.0"
     junitJupiterVersion = "5.13.4"
 }
 
@@ -36,17 +37,19 @@ dependencies {
     implementation "cn.hutool:hutool-core"
     implementation "cn.hutool:hutool-http"
     implementation "cn.hutool:hutool-json"
+    implementation "cn.hutool:hutool-extra"
     implementation "cn.hutool:hutool-system"
     implementation "com.jayway.jsonpath:json-path:${jsonpathVersion}"
+    implementation "org.apache.commons:commons-compress:${compressVersion}"
     // ========== picocli ==========
     implementation "info.picocli:picocli:${picocliVersion}"
     // ========== lombok ==========
     compileOnly "org.projectlombok:lombok:${lombokVersion}"
     annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
     // ========== junit jupiter ==========
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
     testImplementation "org.junit.jupiter:junit-jupiter:${junitJupiterVersion}"
     testImplementation "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
-    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
 jar {
@@ -67,8 +70,10 @@ test {
             'junit.jupiter.execution.parallel.config.strategy'         : 'fixed',
             'junit.jupiter.execution.parallel.config.fixed.parallelism': 4
     ]
-    // 默认跳过测试，除非指定了 runTests 参数
-    if (!project.hasProperty('runTests')) {
+}
+
+tasks.named('build') {
+    dependsOn tasks.named('test') {
         enabled = false
     }
 }

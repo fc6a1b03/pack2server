@@ -18,7 +18,7 @@ public class DownloaderTest {
     @DisplayName("核心-单个下载")
     public void single() {
         final String url = "https://repo1.maven.org/maven2/info/picocli/picocli/4.7.7/picocli-4.7.7.jar";
-        Downloader.fetch(url, FileUtil.file(ConstantPool.JAVA_PROGRAM, ConstantPool.TEMP, ConstantPool.getName(url)).toPath());
+        Downloader.fetch(url, FileUtil.file(ConstantPool.JAVA_PROGRAM, ConstantPool.TEMP, ConstantPool.PARSED_NAME.apply(url)).toPath());
     }
 
     @Test

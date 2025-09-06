@@ -4,7 +4,11 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.file.PathUtil;
 import cn.hutool.core.lang.Opt;
 import cn.hutool.core.lang.func.Supplier2;
+import cn.hutool.core.lang.func.VoidFunc;
+import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.extra.compress.CompressUtil;
+import cn.hutool.extra.compress.extractor.Extractor;
 import lombok.SneakyThrows;
 
 import java.io.File;
@@ -14,6 +18,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * 常量池
@@ -38,20 +43,21 @@ public class ConstantPool {
      */
     public static final File TEST_DIR = FileUtil.file(ConstantPool.HOME, ConstantPool.TEMP);
     /**
-     * Java
-     */
-    public static final String JAVA_PROGRAM = Path.of(System.getProperty("java.home"), "bin", "java").toAbsolutePath().toString();
-    /**
      * 服务目录
      */
     public static final List<String> SERVER_DIRS = List.of("mods", "cache", "logs", "versions", "libraries", "config");
     /**
-     * 构建目录
+     * Java
      */
-    public static final Consumer<File> BUILD_DIR = parent -> SERVER_DIRS.forEach(dir -> {
-        ConstantPool.ensure(Paths.get(dir));
-        FileUtil.mkdir(FileUtil.file(parent, dir));
-    });
+    public static final String JAVA_PROGRAM = Path.of(System.getProperty("java.home"), "bin", "java").toAbsolutePath().toString();
+    /**
+     * 构建基础目录与文件
+     */
+    public static final Consumer<File> BUILD_DIR = parent ->
+            SERVER_DIRS.forEach(dir -> ConstantPool.ensure(Paths.get(dir), () -> {
+                FileUtil.mkdir(FileUtil.file(parent, dir));
+                FileUtil.writeUtf8String("eula=true", FileUtil.file(parent, "eula.txt"));
+            }));
     /**
      * 复制目录
      */
@@ -59,13 +65,37 @@ public class ConstantPool {
         ConstantPool.ensure(dest.toPath());
         return FileUtil.copyContent(src, dest, Boolean.TRUE);
     };
+    /**
+     * 解析名称
+     */
+    public static final Function<String, String> PARSED_NAME = path ->
+            Opt.ofBlankAble(StrUtil.subAfter(path, "/", Boolean.TRUE))
+                    .orElseGet(() -> StrUtil.subAfter(path, "\\", Boolean.TRUE));
+    /**
+     * 提取文件
+     */
+    public static final VoidFunc<Path> EXTRACT_FILES = path -> {
+        try (final Extractor extractor = CompressUtil.createExtractor(CharsetUtil.CHARSET_UTF_8, path[0].toFile())) {
+            extractor.extract(path[1].toFile());
+        }
+    };
 
     /**
      * 确保目录
-     * @param path dir
+     * @param path 路径
      */
     @SneakyThrows
     public static void ensure(final Path path) {
+        ensure(path, null);
+    }
+
+    /**
+     * 确保目录
+     * @param path     路径
+     * @param consumer 消费者
+     */
+    @SneakyThrows
+    public static void ensure(final Path path, final Runnable runnable) {
         if (Objects.nonNull(path)) {
             final Path parent = path.getParent();
             if (Objects.nonNull(parent) && Files.notExists(parent)) {
@@ -75,15 +105,6 @@ public class ConstantPool {
                 Files.delete(path);
             }
         }
-    }
-
-    /**
-     * 获取名称
-     * @param path 路径
-     * @return {@link String }
-     */
-    public static String getName(final String path) {
-        return Opt.ofBlankAble(StrUtil.subAfter(path, "/", Boolean.TRUE))
-                .orElseGet(() -> StrUtil.subAfter(path, "\\", Boolean.TRUE));
+        Opt.ofNullable(runnable).ifPresent(Runnable::run);
     }
 }

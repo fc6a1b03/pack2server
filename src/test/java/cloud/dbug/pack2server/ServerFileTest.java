@@ -10,6 +10,7 @@ import cn.hutool.core.lang.Console;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,6 +22,14 @@ import java.util.stream.Stream;
  * @date 2025-09-06
  */
 public class ServerFileTest {
+    @Test
+    @DisplayName("解压原始模组包")
+    public void extractOriginalModulePackage() {
+        final File src = FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6.zip");
+        final File dest = FileUtil.file(src.getParentFile(), FileUtil.mainName(src.getName()));
+        ConstantPool.EXTRACT_FILES.callWithRuntimeException(src.toPath(), dest.toPath());
+    }
+
     @Test
     @DisplayName("服务器目录初始化")
     public void serverDirectoryInit() {
