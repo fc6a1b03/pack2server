@@ -41,7 +41,7 @@ jobs:
           install-dist: true
           build-cache-push: true
           build-cache-enabled: true
-          arguments: build nativeCompile --build-cache --scan
+          arguments: build nativeCompile
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
