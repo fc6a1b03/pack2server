@@ -35,7 +35,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9'
+          gradle-version: '9.0.0'
           build-cache-push: true
           build-cache-enabled: true
           dependency-graph: generate-and-submit
