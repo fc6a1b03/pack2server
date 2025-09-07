@@ -82,7 +82,7 @@ graalvmNative {
                 '--no-fallback',
                 '-march=native',
                 '-H:+CompactObjectHeaders',
-                '-H:±UseCompressedReferences',
+                '-H:+UseCompressedReferences',
                 '-H:-PrintRuntimeCompileMethods',
                 '-H:+ReportExceptionStackTraces',
                 '--enable-url-protocols=http,https',
