@@ -1,5 +1,6 @@
 package cloud.dbug.pack2server;
 
+import cloud.dbug.pack2server.annotation.LocalOnly;
 import cloud.dbug.pack2server.common.ServerWorkspace;
 import cloud.dbug.pack2server.common.detector.ServerModDetector;
 import cloud.dbug.pack2server.common.detector.enums.Side;
@@ -41,6 +42,7 @@ import java.util.stream.Stream;
  * @author 拒绝者
  * @since 2025-09-06
  */
+@LocalOnly
 public class ServerFileTest {
     @Test
     @DisplayName("解压原始模组包")
