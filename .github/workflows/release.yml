@@ -44,6 +44,8 @@ jobs:
 
       - name: Build & Native Image
         run: ./gradlew build nativeCompile --configuration-cache --build-cache --scan
+        env:
+          GRADLE_DISTRIBUTION_URL: https://github.com/gradle/gradle-distributions/releases/download/v9.0.0/gradle-9.0.0-bin.zip
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
