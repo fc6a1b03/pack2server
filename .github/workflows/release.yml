@@ -46,6 +46,16 @@ jobs:
           overwrite: false
           include-hidden-files: false
 
+      - name: Get version from Gradle
+        id: get-version
+        run: |
+          VERSION=$(./gradlew printVersion --quiet | tail -1)
+          echo "Version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+      - name: Create tag
+        run: |
+          git tag -a v${{ env.VERSION }} -m "Automated release v${{ env.VERSION }}"
+          git push origin v${{ env.VERSION }}
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
@@ -57,3 +67,6 @@ jobs:
             ## Verification
             - **SBOM & provenance**: 见下方 attestations
             - **Checksums**: 已内置于 Release 文件
+          overwrite_files: true
+          tag_name: v${{ env.VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
