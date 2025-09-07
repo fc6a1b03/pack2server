@@ -5,16 +5,7 @@ on:
 
 jobs:
   native:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ ubuntu-latest, windows-latest ]
-        include:
-          - os: ubuntu-latest
-            artifact: pack2server-linux-amd64
-          - os: windows-latest
-            artifact: pack2server-windows-amd64.exe
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     permissions:
       contents: write
