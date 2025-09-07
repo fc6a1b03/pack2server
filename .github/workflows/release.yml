@@ -54,6 +54,8 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
       - name: Create tag
         run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
           git tag -a v${{ env.VERSION }} -m "Automated release v${{ env.VERSION }}"
           git push origin v${{ env.VERSION }}
       - name: Release
