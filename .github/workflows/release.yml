@@ -41,9 +41,8 @@ jobs:
           install-dist: true
           build-cache-push: true
           build-cache-enabled: true
+          arguments: build nativeCompile --configuration-cache --build-cache --scan
 
-      - name: Build & Native Image
-        run: ./gradlew build nativeCompile --configuration-cache --build-cache --scan
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
