@@ -1,5 +1,6 @@
 package cloud.dbug.pack2server;
 
+import cloud.dbug.pack2server.annotation.LocalOnly;
 import cloud.dbug.pack2server.common.ServerWorkspace;
 import cloud.dbug.pack2server.common.downloader.Downloader;
 import cn.hutool.core.io.FileUtil;
@@ -13,6 +14,7 @@ import java.util.List;
  * @author 拒绝者
  * @date 2025-09-05
  */
+@LocalOnly
 public class DownloaderTest {
     @Test
     @DisplayName("单个下载")

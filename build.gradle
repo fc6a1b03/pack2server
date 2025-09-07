@@ -1,14 +1,16 @@
 plugins {
     id "java"
     id "com.gradleup.shadow" version "9.1.0"
+    id "org.graalvm.buildtools.native" version "0.11.0"
 }
 
 group = "cloud.dbug.pack2server"
-version = "0.8"
+version = "0.9"
 
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
+        vendor = JvmVendorSpec.ORACLE
     }
 }
 
@@ -57,18 +59,35 @@ shadowJar {
     mergeServiceFiles()
     manifest {
         archiveVersion = ''
-        archiveClassifier = ''
+        archiveClassifier = 'run'
         archiveBaseName = 'pack2server'
         attributes(
                 'Main-Class': "${project.group}.Pack2server",
-                'Implementation-Version': project.version,
-                'Created-By': "Gradle ${gradle.gradleVersion} + UTF-8"
+                'Implementation-Version': project.version
+        )
+    }
+}
+
+graalvmNative {
+    toolchainDetection = Boolean.FALSE
+    binaries.main {
+        imageName = 'pack2server'
+        mainClass = "${group}.Pack2server"
+        buildArgs.addAll(
+                '-O3',
+                '--gc=serial',
+                '--no-fallback',
+                '-march=native',
+                '-H:+ReportExceptionStackTraces',
+                '--enable-url-protocols=http,https'
         )
     }
 }
 
 test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'local'
+    }
     failOnNoDiscoveredTests = Boolean.FALSE
     systemProperties = [
             'junit.jupiter.execution.parallel.enabled'                 : Boolean.TRUE,
@@ -80,10 +99,7 @@ test {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-}
-
-tasks.named("check") {
-    dependsOn.removeAll { it.name == "test" }
+    options.compilerArgs += ['-Xlint:deprecation', '-Xlint:unchecked']
 }
 
 tasks.register("printVersion") {
