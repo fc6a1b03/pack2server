@@ -77,16 +77,14 @@ graalvmNative {
         imageName = 'pack2server'
         mainClass = "${group}.Pack2server"
         buildArgs.addAll(
-                '-O3',
-                '--gc=serial',
-                '--no-fallback',
-                '-march=native',
-                '-H:+CompactObjectHeaders',
-                '-H:+UseCompressedReferences',
-                '-H:-PrintRuntimeCompileMethods',
-                '-H:+ReportExceptionStackTraces',
-                '--enable-url-protocols=http,https',
-                '--initialize-at-build-time=cn.hutool.core.date.DateUtil,cn.hutool.core.util.StrUtil,org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream'
+            '-O3',
+            '--gc=serial',
+            '--no-fallback',
+            '-march=native',
+            '-H:-PrintRuntimeCompileMethods',
+            '-H:+ReportExceptionStackTraces',
+            '--enable-url-protocols=http,https',
+            '--initialize-at-build-time=cn.hutool.core.date.DateUtil,cn.hutool.core.util.StrUtil,org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream'
         )
         if (DefaultNativePlatform.currentOperatingSystem.isLinux()) {
             buildArgs.add('-H:+StaticExecutableWithDynamicLibC')
