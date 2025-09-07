@@ -86,8 +86,6 @@ graalvmNative {
                 '-H:-PrintRuntimeCompileMethods',
                 '-H:+ReportExceptionStackTraces',
                 '--enable-url-protocols=http,https',
-                '-H:MissingRegistrationReportingMode=error',
-                '-H:ThrowMissingRegistrationErrors=reflection,proxy,jni',
                 '--initialize-at-build-time=cn.hutool.core.date.DateUtil,cn.hutool.core.util.StrUtil,org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream'
         )
         if (DefaultNativePlatform.currentOperatingSystem.isLinux()) {
