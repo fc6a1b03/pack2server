@@ -1,0 +1,67 @@
+name: Release CLI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+        include:
+          - os: ubuntu-latest
+            artifact: pack2server-linux-amd64
+          - os: windows-latest
+            artifact: pack2server-windows-amd64.exe
+    runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '21'
+          distribution: 'graalvm-community'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: 'gradle'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9'
+          build-cache-push: true
+          build-cache-enabled: true
+          dependency-graph: generate-and-submit
+
+      - name: Build & Native Image
+        run: ./gradlew build nativeCompile --configuration-cache --build-cache --scan
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            build/native/nativeCompile/pack2server*
+            build/libs/*-cli.jar
+      - name: Generate provenance
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: 'build/native/nativeCompile/pack2server*'
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/native/nativeCompile/pack2server*
+            build/libs/*-cli.jar
+          generate_release_notes: true
+          append_body: |
+            ## Verification
+            - **SBOM & provenance**: 见下方 attestations
+            - **Checksums**: 已内置于 Release 文件

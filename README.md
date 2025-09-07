@@ -127,8 +127,7 @@ pack2server/
 
 ```bash
 # 构建项目
-./gradlew build
-./gradlew nativeCompile
+./gradlew build nativeCompile
 
 # 运行测试
 ./gradlew test

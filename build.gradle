@@ -1,3 +1,5 @@
+import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
+
 plugins {
     id "java"
     id "com.gradleup.shadow" version "9.1.0"
@@ -9,8 +11,8 @@ version = "0.9"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
         vendor = JvmVendorSpec.ORACLE
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -29,6 +31,7 @@ ext {
     lombokVersion = "1.18.38"
     picocliVersion = "4.7.7"
     jsonpathVersion = "2.9.0"
+    lombokCAVersion = "0.2.0"
     compressVersion = "1.28.0"
     junitJupiterVersion = "5.13.4"
 }
@@ -49,6 +52,7 @@ dependencies {
     // ========== lombok ==========
     compileOnly "org.projectlombok:lombok:${lombokVersion}"
     annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok-mapstruct-binding:${lombokCAVersion}"
     // ========== junit jupiter ==========
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
     testImplementation "org.junit.jupiter:junit-jupiter:${junitJupiterVersion}"
@@ -56,16 +60,16 @@ dependencies {
 }
 
 shadowJar {
-    mergeServiceFiles()
+    archiveVersion = ''
+    archiveClassifier = 'cli'
+    archiveBaseName = 'pack2server'
     manifest {
-        archiveVersion = ''
-        archiveClassifier = 'run'
-        archiveBaseName = 'pack2server'
         attributes(
                 'Main-Class': "${project.group}.Pack2server",
                 'Implementation-Version': project.version
         )
     }
+    mergeServiceFiles()
 }
 
 graalvmNative {
@@ -78,9 +82,26 @@ graalvmNative {
                 '--gc=serial',
                 '--no-fallback',
                 '-march=native',
+                '-H:+CompactObjectHeaders',
+                '-H:±UseCompressedReferences',
+                '-H:-PrintRuntimeCompileMethods',
                 '-H:+ReportExceptionStackTraces',
-                '--enable-url-protocols=http,https'
+                '--enable-url-protocols=http,https',
+                '-H:MissingRegistrationReportingMode=error',
+                '-H:ThrowMissingRegistrationErrors=reflection,proxy,jni',
+                '--initialize-at-build-time=cn.hutool.core.date.DateUtil,cn.hutool.core.util.StrUtil,org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream'
         )
+        if (DefaultNativePlatform.currentOperatingSystem.isLinux()) {
+            buildArgs.add('-H:+StaticExecutableWithDynamicLibC')
+        }
+    }
+    agent {
+        defaultMode = 'standard'
+        metadataCopy {
+            inputTaskNames.add('run')
+            mergeWithExisting = Boolean.TRUE
+            outputDirectories.add('src/main/resources/META-INF/native-image')
+        }
     }
 }
 
