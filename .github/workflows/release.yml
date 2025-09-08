@@ -82,20 +82,19 @@ jobs:
       - name: Unified drive letter
         shell: bash
         run: |
-          # GraalVM
-          DRIVE="${RUNNER_WORKSPACE:0:2}"
-          TARGET_JAVA_HOME="${DRIVE}/graalvm"
-          cp -R "$JAVA_HOME" "$TARGET_JAVA_HOME"
-          echo "JAVA_HOME=/d/graalvm"     >> "$GITHUB_ENV"
-          echo "GRAALVM_HOME=/d/graalvm" >> "$GITHUB_ENV"
-          # 临时目录
-          echo "TMP=$RUNNER_WORKSPACE/tmp"   >> "$GITHUB_ENV"
-          echo "TEMP=$RUNNER_WORKSPACE/tmp"  >> "$GITHUB_ENV"
-          echo "TMPDIR=$RUNNER_WORKSPACE/tmp" >> "$GITHUB_ENV"
-          mkdir -p "$RUNNER_WORKSPACE/tmp"
-          # Gradle
-          echo "GRADLE_USER_HOME=$RUNNER_WORKSPACE/.gradle" >> "$GITHUB_ENV"
-          mkdir -p "$RUNNER_WORKSPACE/.gradle"
+          $drive = (Split-Path -Qualifier $env:RUNNER_WORKSPACE)
+          $tgt   = "$drive\graalvm"
+          # 硬链接 JDK（秒完成，无拷贝）
+          New-Item -ItemType Junction -Path $tgt -Target $env:JAVA_HOME
+          # 同盘临时目录 & Gradle 目录
+          @("$env:RUNNER_WORKSPACE\tmp",
+            "$env:RUNNER_WORKSPACE\.gradle") | % { New-Item -ItemType Directory -Path $_ -Force }
+          # 写入环境变量
+          "JAVA_HOME=$tgt"      >> $env:GITHUB_ENV
+          "GRAALVM_HOME=$tgt"   >> $env:GITHUB_ENV
+          "TMP=$env:RUNNER_WORKSPACE\tmp"   >> $env:GITHUB_ENV
+          "TEMP=$env:RUNNER_WORKSPACE\tmp"  >> $env:GITHUB_ENV
+          "TMPDIR=$env:RUNNER_WORKSPACE\tmp" >> $env:GITHUB_ENV
  
       - name: Setup GraalVM
         uses: graalvm/setup-graalvm@v1
