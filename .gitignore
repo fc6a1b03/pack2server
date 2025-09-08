@@ -1,4 +1,7 @@
 .gradle
+gradlew
+gradlew.bat
+gradle-wrapper.jar
 build/
 Temp/
 !**/src/main/**/build/
