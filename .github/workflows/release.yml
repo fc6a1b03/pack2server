@@ -81,7 +81,15 @@ jobs:
         uses: actions/checkout@v4
       - name: Unified drive letter
         shell: bash
-        run: echo "GRADLE_USER_HOME=$RUNNER_WORKSPACE/.gradle" >> "$GITHUB_ENV"
+        run: |
+          # Gradle 用户目录
+          echo "GRADLE_USER_HOME=$RUNNER_WORKSPACE/.gradle" >> "$GITHUB_ENV"
+          # Maven 本地仓库（native-image 解析 pom 时用）
+          echo "MAVEN_OPTS=-Dmaven.repo.local=$RUNNER_WORKSPACE/.m2" >> "$GITHUB_ENV"
+          # native-image 临时目录
+          echo "NATIVE_IMAGE_USER_HOME=$RUNNER_WORKSPACE/.native-image" >> "$GITHUB_ENV"
+          # 预创建目录
+          mkdir -p "$RUNNER_WORKSPACE/.gradle" "$RUNNER_WORKSPACE/.m2" "$RUNNER_WORKSPACE/.native-image"
  
       - name: Setup GraalVM
         uses: graalvm/setup-graalvm@v1
