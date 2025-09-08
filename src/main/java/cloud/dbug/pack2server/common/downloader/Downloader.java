@@ -3,8 +3,8 @@ package cloud.dbug.pack2server.common.downloader;
 import cloud.dbug.pack2server.common.ServerWorkspace;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Console;
+import cn.hutool.core.lang.Opt;
 import cn.hutool.core.net.URLDecoder;
-import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.core.util.StrUtil;
 import lombok.SneakyThrows;
@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
 /**
@@ -73,6 +74,10 @@ public class Downloader {
      */
     private static final AtomicLong LAST_GLOBAL = new AtomicLong(-1);
     /**
+     * 最后一个文件
+     */
+    private static final AtomicReference<String> LAST_FILE = new AtomicReference<>();
+    /**
      * 每个文件已落盘字节<br/>
      * KEY: 目标文件路径<br/>
      * VALUE: 该文件已落盘字节计数器
@@ -95,46 +100,41 @@ public class Downloader {
      * @param targetDir 目标目录
      * @return long
      */
-    @SuppressWarnings("UnusedReturnValue")
+    @SneakyThrows
+    @SuppressWarnings({"UnusedReturnValue"})
     public static long fetchAll(final List<String> uris, final Path targetDir) {
-        if (CollUtil.isEmpty(uris)) {
-            return 0;
-        }
-        ServerWorkspace.ensure(targetDir);
-        // 初始化计数器
-        GLOBAL_BYTES.reset();
-        GLOBAL_TOTAL.reset();
-        FILE_BYTES.clear();
-        FILE_TOTAL.clear();
-        // 并行获取所有文件大小
-        uris.parallelStream().forEach(u -> {
-            try {
-                final long len = contentLength(u);
-                if (len > 0) {
-                    GLOBAL_TOTAL.add(len);
-                }
-            } catch (final Exception ignore) {
+        try {
+            if (CollUtil.isEmpty(uris)) {
+                return 0;
             }
-        });
-        // 启动后台进度条
-        START_MS = System.currentTimeMillis();
-        EXECUTOR.submit(() -> {
-            try {
-                while (GLOBAL_BYTES.sum() < GLOBAL_TOTAL.sum()) {
-                    //定期检查进度
-                    ThreadUtil.sleep(500);
+            ServerWorkspace.ensure(targetDir);
+            // 初始化计数器
+            GLOBAL_BYTES.reset();
+            GLOBAL_TOTAL.reset();
+            FILE_BYTES.clear();
+            FILE_TOTAL.clear();
+            // 并行获取所有文件大小
+            uris.parallelStream().forEach(u -> Opt.of(contentLength(u)).filter(len -> len > 0).ifPresent(GLOBAL_TOTAL::add));
+            // 启动后台进度条
+            START_MS = System.currentTimeMillis();
+            EXECUTOR.submit(() -> {
+                try {
+                    while (GLOBAL_BYTES.sum() < GLOBAL_TOTAL.sum()) {
+                        printTotal();
+                    }
+                } finally {
                     printTotal();
                 }
-            } finally {
-                printTotal();
-            }
-        });
-        // 并发下载
-        return uris.stream().filter(Objects::nonNull)
-                .map(u ->
-                        EXECUTOR.submit(() -> fetch(u, targetDir.resolve(URLDecoder.decode(StrUtil.subAfter(u, "/", Boolean.TRUE), CharsetUtil.CHARSET_UTF_8)), Boolean.TRUE))
-                )
-                .map(Downloader::get).filter(r -> r == 0).count();
+            });
+            // 启动下载
+            return uris.parallelStream().filter(Objects::nonNull)
+                    .map(u ->
+                            EXECUTOR.submit(() -> fetch(u, targetDir.resolve(URLDecoder.decode(StrUtil.subAfter(u, "/", Boolean.TRUE), CharsetUtil.CHARSET_UTF_8)), Boolean.TRUE))
+                    )
+                    .map(Downloader::get).filter(r -> r == 0).count();
+        } finally {
+            printTotal();
+        }
     }
 
     /**
@@ -291,16 +291,18 @@ public class Downloader {
      * 获取远程文件大小
      * @param uri 文件地址
      * @return long
-     * @throws IOException          IOException
-     * @throws InterruptedException 中断异常
      */
-    private static long contentLength(final String uri) throws IOException, InterruptedException {
-        return HTTP_CLIENT.send(
-                HttpRequest.newBuilder(URI.create(uri))
-                        .method("HEAD", HttpRequest.BodyPublishers.noBody())
-                        .build(),
-                HttpResponse.BodyHandlers.discarding()
-        ).headers().firstValueAsLong("Content-Length").orElse(-1);
+    private static long contentLength(final String uri) {
+        try {
+            return HTTP_CLIENT.send(
+                    HttpRequest.newBuilder(URI.create(uri))
+                            .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                            .build(),
+                    HttpResponse.BodyHandlers.discarding()
+            ).headers().firstValueAsLong("Content-Length").orElse(-1);
+        } catch (final Exception e) {
+            return -1;
+        }
     }
 
     /**
@@ -317,21 +319,27 @@ public class Downloader {
      * 打印全局总进度
      */
     private static void printTotal() {
-        final long done = GLOBAL_BYTES.sum();
-        final long total = GLOBAL_TOTAL.sum();
-        if (total <= 0) {
+        final long bytesDone = GLOBAL_BYTES.sum();
+        final long totalBytes = GLOBAL_TOTAL.sum();
+        if (totalBytes <= 0) {
             return;
         }
-        // 无变化直接跳过
-        if (LAST_GLOBAL.compareAndSet(done, done)) {
+        if (bytesDone == LAST_GLOBAL.getAndSet(bytesDone)) {
             return;
         }
-        LAST_GLOBAL.set(done);
-        Console.log(
-                ">>> 进度 | {}/{} ({}%) | 速度: {}",
-                format(done), format(total), (int) (done * 100 / total),
-                formatSpeed(done * 1000 / Math.max(1, System.currentTimeMillis() - START_MS))
+        final int width = 60;
+        final int percent = (int) (bytesDone * 100 / totalBytes);
+        final int filled = (int) (width * bytesDone / totalBytes);
+        final String bar = StrUtil.repeat('█', filled) + (percent < 99 ? "" : '█') + StrUtil.repeat(' ', width - filled);
+        Console.log("\r┃" + bar + "┃" +
+                String.format("%4d%% %s/s%s",
+                        percent,
+                        formatSpeed(bytesDone * 1000 / Math.max(1, System.currentTimeMillis() - START_MS)),
+                        Objects.isNull(LAST_FILE.get()) ? "" : LAST_FILE.get())
         );
+        if (bytesDone == totalBytes) {
+            Console.log("");
+        }
     }
 
     /**
@@ -343,7 +351,13 @@ public class Downloader {
         final Long total = FILE_TOTAL.get(target);
         if (Objects.isNull(fileAdder) || Objects.isNull(total) || total <= 0) return;
         final long done = fileAdder.sum();
-        Console.log(">>> 完成 | {} | {}/{} | ({}%)", target.getFileName(), format(done), format(total), (int) (done * 100 / total));
+        LAST_FILE.set(StrUtil.format(
+                " | {} | {}/{} | ({}%) ",
+                target.getFileName(),
+                format(done),
+                format(total),
+                (int) (done * 100 / total))
+        );
     }
 
     /**

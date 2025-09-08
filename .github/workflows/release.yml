@@ -15,22 +15,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: 'gradle'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.0.0"
+
       - name: Extract Version from from build.gradle
         run: |
           echo "version=$(gradle -q printVersion)" >> $GITHUB_ENV
           echo "java_version=$(gradle -q printJavaVersion)" >> $GITHUB_ENV
           echo "gradle_version=$(gradle -q printGradleVersion)" >> $GITHUB_ENV
-
-      - name: Set up JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: ${{ env.java_version }}
-          cache: 'gradle'
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: ${{ env.gradle_version }}
 
       - name: Build with Gradle
         run: gradle clean buildPlugin --no-daemon --no-build-cache --no-configuration-cache --no-parallel --no-watch-fs --max-workers=1
