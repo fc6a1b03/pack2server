@@ -80,23 +80,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Unified drive letter
-        shell: bash
+        shell: pwsh
         run: |
           # 确认盘符
-          DRIVE="${RUNNER_WORKSPACE:0:2}"
-          TARGET_JAVA_HOME="${DRIVE}/graalvm"
-          WIN_TARGET=$(cygpath -w "$TARGET_JAVA_HOME")
-          WIN_SOURCE=$(cygpath -w "$JAVA_HOME")
+          $drive = (Get-Location).Drive.Name
+          $tgt   = "${drive}:\graalvm"
           # 创建目录联接
-          cmd //c "mklink /J \"$WIN_TARGET\" \"$WIN_SOURCE\""
+          cmd /c "mklink /J `"$tgt`" `"$env:JAVA_HOME`""
           # 同盘临时目录 & Gradle 目录
-          mkdir -p "$RUNNER_WORKSPACE/tmp" "$RUNNER_WORKSPACE/.gradle"
+          New-Item -ItemType Directory -Force "$env:RUNNER_WORKSPACE\tmp", "$env:RUNNER_WORKSPACE\.gradle"
           # 写入环境变量
-          echo "JAVA_HOME=$TARGET_JAVA_HOME"     >> "$GITHUB_ENV"
-          echo "GRAALVM_HOME=$TARGET_JAVA_HOME"  >> "$GITHUB_ENV"
-          echo "TMP=$RUNNER_WORKSPACE/tmp"       >> "$GITHUB_ENV"
-          echo "TEMP=$RUNNER_WORKSPACE/tmp"      >> "$GITHUB_ENV"
-          echo "TMPDIR=$RUNNER_WORKSPACE/tmp"    >> "$GITHUB_ENV"
+          "JAVA_HOME=$tgt"                   >> $env:GITHUB_ENV
+          "GRAALVM_HOME=$tgt"                >> $env:GITHUB_ENV
+          "TMP=$env:RUNNER_WORKSPACE\tmp"    >> $env:GITHUB_ENV
+          "TEMP=$env:RUNNER_WORKSPACE\tmp"   >> $env:GITHUB_ENV
+          "TMPDIR=$env:RUNNER_WORKSPACE\tmp" >> $env:GITHUB_ENV
  
       - name: Setup GraalVM
         uses: graalvm/setup-graalvm@v1
