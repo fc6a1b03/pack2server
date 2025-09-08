@@ -94,7 +94,7 @@ tasks.register("printVersion") {
 
 tasks.register("printJavaVersion") {
     doLast {
-        println java.sourceCompatibility
+        println JavaVersion.current()
     }
 }
 
