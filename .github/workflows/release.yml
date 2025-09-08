@@ -86,7 +86,7 @@ jobs:
           DRIVE="${RUNNER_WORKSPACE:0:2}"
           TARGET_JAVA_HOME="${DRIVE}/graalvm"
           # 创建目录联接
-          cmd //c "mklink //J \"$TARGET_JAVA_HOME\" \"$JAVA_HOME\""
+          cmd //c "mklink //J '${TARGET_JAVA_HOME}' '${JAVA_HOME}'"
           # 同盘临时目录 & Gradle 目录
           mkdir -p "$RUNNER_WORKSPACE/tmp" "$RUNNER_WORKSPACE/.gradle"
           # 写入环境变量
