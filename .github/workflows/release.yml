@@ -40,7 +40,7 @@ jobs:
         run: |
           VERSION=$(./gradlew printVersion -q --no-daemon --no-build-cache --no-configuration-cache --no-parallel --no-watch-fs --max-workers=1 | tail -1)
           echo "Version: $VERSION"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Ensure tag
         id: tag
         shell: bash
