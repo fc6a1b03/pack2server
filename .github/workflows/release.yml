@@ -30,13 +30,14 @@ jobs:
         with:
           build-cache-push: false
           build-cache-enabled: false
-          arguments:  clean build nativeCompile --no-daemon -Porg.gradle.daemon=false -Porg.gradle.caching=false -Porg.gradle.parallel=false -Porg.gradle.workers.max=4 -Porg.gradle.jvmargs=-Xms1g -Xmx4g -XX:MaxMetaspaceSize=1g
+          arguments:  clean build nativeCompile --no-daemon
 
       - name: Get version
         id: get-version
         uses: gradle/actions/setup-gradle@v3
         with:
           arguments: printVersion -q
+      - name: Set version
       - run: echo "version=${{ steps.get-version.outputs.result }}" >> "$GITHUB_OUTPUT"
         shell: bash
       - name: Ensure tag
@@ -88,7 +89,7 @@ jobs:
         with:
           build-cache-push: false
           build-cache-enabled: false
-          arguments: clean build nativeCompile --no-daemon -Porg.gradle.daemon=false -Porg.gradle.caching=false -Porg.gradle.parallel=false -Porg.gradle.workers.max=4 -Porg.gradle.jvmargs=-Xms1g -Xmx4g -XX:MaxMetaspaceSize=1g
+          arguments: clean build nativeCompile --no-daemon
 
       - name: Rename exe
         shell: bash
