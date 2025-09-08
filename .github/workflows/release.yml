@@ -38,7 +38,7 @@ jobs:
       - name: Get version from Gradle
         id: get-version
         run: |
-          VERSION=$(./gradlew printVersion --quiet | tail -1)
+          VERSION=$(./gradlew printVersion -q --no-daemon --no-build-cache --no-configuration-cache --no-parallel --no-watch-fs --max-workers=1 | tail -1)
           echo "Version: $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
       - name: Ensure tag
