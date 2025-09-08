@@ -26,7 +26,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: 'gradle'
       - name: Setup Gradle & Compile
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v3
         with:
           build-cache-push: false
           build-cache-enabled: false
@@ -40,7 +40,7 @@ jobs:
 
       - name: Get version
         id: get-version
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v3
         with:
           arguments: printVersion -q
       - run: echo "version=${{ steps.get-version.outputs.result }}" >> "$GITHUB_OUTPUT"
@@ -90,7 +90,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: 'gradle'
       - name: Setup Gradle & Compile
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v3
         with:
           build-cache-enabled: false
           arguments: |
