@@ -82,14 +82,18 @@ jobs:
       - name: Unified drive letter
         shell: bash
         run: |
-          # Gradle 用户目录
+          # GraalVM
+          rsync -a "$JAVA_HOME/" "/d/graalvm/"
+          echo "JAVA_HOME=/d/graalvm"     >> "$GITHUB_ENV"
+          echo "GRAALVM_HOME=/d/graalvm" >> "$GITHUB_ENV"
+          # 临时目录
+          echo "TMP=$RUNNER_WORKSPACE/tmp"   >> "$GITHUB_ENV"
+          echo "TEMP=$RUNNER_WORKSPACE/tmp"  >> "$GITHUB_ENV"
+          echo "TMPDIR=$RUNNER_WORKSPACE/tmp" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_WORKSPACE/tmp"
+          # Gradle
           echo "GRADLE_USER_HOME=$RUNNER_WORKSPACE/.gradle" >> "$GITHUB_ENV"
-          # Maven 本地仓库（native-image 解析 pom 时用）
-          echo "MAVEN_OPTS=-Dmaven.repo.local=$RUNNER_WORKSPACE/.m2" >> "$GITHUB_ENV"
-          # native-image 临时目录
-          echo "NATIVE_IMAGE_USER_HOME=$RUNNER_WORKSPACE/.native-image" >> "$GITHUB_ENV"
-          # 预创建目录
-          mkdir -p "$RUNNER_WORKSPACE/.gradle" "$RUNNER_WORKSPACE/.m2" "$RUNNER_WORKSPACE/.native-image"
+          mkdir -p "$RUNNER_WORKSPACE/.gradle"
  
       - name: Setup GraalVM
         uses: graalvm/setup-graalvm@v1
