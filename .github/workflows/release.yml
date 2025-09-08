@@ -111,16 +111,11 @@ jobs:
           build-cache-enabled: false
           arguments: clean build nativeCompile --no-daemon --no-build-cache --no-configuration-cache --no-parallel --no-watch-fs --max-workers=1
 
-      - name: Rename exe
-        shell: bash
-        run: mv build/native/nativeCompile/pack2server.exe \
-               build/native/nativeCompile/pack2server-windows.exe
       - name: Release Windows assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            build/native/nativeCompile/pack2server-windows.exe
-            build/libs/*-cli.jar
+            build/native/nativeCompile/pack2server.exe
           generate_release_notes: false
           tag_name: ${{ needs.linux.outputs.tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
