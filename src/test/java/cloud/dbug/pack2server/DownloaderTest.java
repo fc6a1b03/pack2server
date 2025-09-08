@@ -33,7 +33,7 @@ public class DownloaderTest {
                         "https://repo1.maven.org/maven2/info/picocli/picocli/4.7.4/picocli-4.7.4.jar",
                         "https://repo1.maven.org/maven2/info/picocli/picocli/4.7.3/picocli-4.7.3.jar"
                 ),
-                FileUtil.file(ServerWorkspace.JAVA_PROGRAM, ServerWorkspace.TEMP).toPath()
+                FileUtil.file(ServerWorkspace.USER_HOME, ServerWorkspace.TEMP).toPath()
         );
     }
 }
