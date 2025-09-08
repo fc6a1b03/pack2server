@@ -83,7 +83,9 @@ jobs:
         shell: bash
         run: |
           # GraalVM
-          cp -R "$JAVA_HOME" "/d/graalvm"
+          DRIVE="${RUNNER_WORKSPACE:0:2}"
+          TARGET_JAVA_HOME="${DRIVE}/graalvm"
+          cp -R "$JAVA_HOME" "$TARGET_JAVA_HOME"
           echo "JAVA_HOME=/d/graalvm"     >> "$GITHUB_ENV"
           echo "GRAALVM_HOME=/d/graalvm" >> "$GITHUB_ENV"
           # 临时目录
