@@ -47,7 +47,9 @@ jobs:
         run: |
           TAG="v${{ steps.get-version.outputs.version }}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          if git rev-parse "$TAG" &>/dev/null; then
+          # 只读取远程 tag 索引
+          git fetch --tags --force
+          if git rev-parse "$TAG" >/dev/null 2>&1 || git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
             echo "Tag exists, skip creation"
           else
             git config user.email "github-actions@github.com"
