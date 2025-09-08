@@ -4,9 +4,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  native:
+  linux:
     runs-on: ubuntu-latest
-
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      tag:   ${{ steps.tag.outputs.tag }}
     permissions:
       contents: write
       id-token: write
@@ -15,8 +17,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
 
       - name: Setup GraalVM
         uses: graalvm/setup-graalvm@v1
@@ -25,50 +25,93 @@ jobs:
           distribution: 'graalvm-community'
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: 'gradle'
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+      - name: Setup Gradle & Compile
+        uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.0.0'
-          install-dist: true
-          build-cache-push: true
-          build-cache-enabled: true
-          arguments: build nativeCompile
+          build-cache-push: false
+          build-cache-enabled: false
+          arguments: |
+            clean build nativeCompile --no-daemon
+            -Porg.gradle.daemon=false
+            -Porg.gradle.caching=false
+            -Porg.gradle.parallel=false
+            -Porg.gradle.workers.max=4
+            -Porg.gradle.jvmargs=-Xms1g -Xmx4g -XX:MaxMetaspaceSize=1g
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: pack2server-artifacts
-          path: |
-            build/native/nativeCompile/pack2server*
-            build/libs/*-cli.jar
-          if-no-files-found: warn
-          compression-level: 6
-          overwrite: false
-          include-hidden-files: false
-
-      - name: Get version from Gradle
+      - name: Get version
         id: get-version
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          arguments: printVersion -q
+      - run: echo "version=${{ steps.get-version.outputs.result }}" >> "$GITHUB_OUTPUT"
+        shell: bash
+      - name: Ensure tag
+        id: tag
+        shell: bash
         run: |
-          VERSION=$(./gradlew printVersion --quiet | tail -1)
-          echo "Version: $VERSION"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-      - name: Create tag
-        run: |
-          git config --global user.email "github-actions@github.com"
-          git config --global user.name "GitHub Actions"
-          git tag -a v${{ env.VERSION }} -m "Automated release v${{ env.VERSION }}"
-          git push origin v${{ env.VERSION }}
-      - name: Release
+          TAG="v${{ steps.get-version.outputs.version }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          if git rev-parse "$TAG" &>/dev/null; then
+            echo "Tag exists, skip creation"
+          else
+            git config user.email "github-actions@github.com"
+            git config user.name "GitHub Actions"
+            git tag -a "$TAG" -m "Release $TAG"
+            git push origin "$TAG"
+          fi
+      - name: Release Linux assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            build/native/nativeCompile/pack2server*
+            build/native/nativeCompile/pack2server
             build/libs/*-cli.jar
           generate_release_notes: true
-          append_body: |
-            ## Verification
-            - **SBOM & provenance**: 见下方 attestations
-            - **Checksums**: 已内置于 Release 文件
-          overwrite_files: true
-          tag_name: v${{ env.VERSION }}
+          tag_name: ${{ steps.tag.outputs.tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          overwrite_files: true
+
+  windows:
+    needs: linux
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '21'
+          distribution: 'graalvm-community'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: 'gradle'
+      - name: Setup Gradle & Compile
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          build-cache-enabled: false
+          arguments: |
+            clean build nativeCompile --no-daemon
+            -Porg.gradle.daemon=false
+            -Porg.gradle.caching=false
+            -Porg.gradle.parallel=false
+            -Porg.gradle.workers.max=4
+            -Porg.gradle.jvmargs=-Xms1g -Xmx4g -XX:MaxMetaspaceSize=1g
+
+      - name: Rename exe
+        shell: bash
+        run: mv build/native/nativeCompile/pack2server.exe \
+               build/native/nativeCompile/pack2server-windows.exe
+      - name: Release Windows assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/native/nativeCompile/pack2server-windows.exe
+            build/libs/*-cli.jar
+          generate_release_notes: false
+          tag_name: ${{ needs.linux.outputs.tag }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          overwrite_files: true
