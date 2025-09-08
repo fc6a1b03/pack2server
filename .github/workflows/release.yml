@@ -83,7 +83,7 @@ jobs:
         shell: bash
         run: |
           # GraalVM
-          rsync -a "$JAVA_HOME/" "/d/graalvm/"
+          cp -R "$JAVA_HOME" "/d/graalvm"
           echo "JAVA_HOME=/d/graalvm"     >> "$GITHUB_ENV"
           echo "GRAALVM_HOME=/d/graalvm" >> "$GITHUB_ENV"
           # 临时目录
