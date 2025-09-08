@@ -1,13 +1,10 @@
-import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
-
 plugins {
     id "java"
     id "com.gradleup.shadow" version "9.1.0"
-    id "org.graalvm.buildtools.native" version "0.11.0"
 }
 
 group = "cloud.dbug.pack2server"
-version = "0.9"
+version = "0.9.1"
 
 java {
     toolchain {
@@ -59,63 +56,34 @@ dependencies {
 }
 
 shadowJar {
-    archiveVersion = ''
-    archiveClassifier = 'cli'
-    archiveBaseName = 'pack2server'
+    archiveVersion = ""
+    archiveClassifier = "cli"
+    archiveBaseName = "pack2server"
     manifest {
         attributes(
-                'Main-Class': "${project.group}.Pack2server",
-                'Implementation-Version': project.version
+                "Main-Class": "${project.group}.Pack2server",
+                "Implementation-Version": project.version
         )
     }
     mergeServiceFiles()
 }
 
-graalvmNative {
-    toolchainDetection = Boolean.FALSE
-    binaries.main {
-        imageName = 'pack2server'
-        mainClass = "${group}.Pack2server"
-        buildArgs.addAll(
-            '-O3',
-            '--gc=serial',
-            '--no-fallback',
-            '-march=x86-64',
-            '-H:-PrintRuntimeCompileMethods',
-            '-H:+ReportExceptionStackTraces',
-            '--enable-url-protocols=http,https',
-            '--initialize-at-build-time=cn.hutool.core.date.DateUtil,cn.hutool.core.util.StrUtil,org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream'
-        )
-        if (DefaultNativePlatform.currentOperatingSystem.isLinux()) {
-            buildArgs.add('-H:+StaticExecutableWithDynamicLibC')
-        }
-    }
-    agent {
-        defaultMode = 'standard'
-        metadataCopy {
-            inputTaskNames.add('run')
-            mergeWithExisting = Boolean.TRUE
-            outputDirectories.add('src/main/resources/META-INF/native-image')
-        }
-    }
-}
-
 test {
     useJUnitPlatform {
-        excludeTags 'local'
+        excludeTags "local"
     }
     failOnNoDiscoveredTests = Boolean.FALSE
     systemProperties = [
-            'junit.jupiter.execution.parallel.enabled'                 : Boolean.TRUE,
-            'junit.jupiter.execution.parallel.mode.default'            : 'concurrent',
-            'junit.jupiter.execution.parallel.config.strategy'         : 'fixed',
-            'junit.jupiter.execution.parallel.config.fixed.parallelism': 4
+            "junit.jupiter.execution.parallel.enabled"                 : Boolean.TRUE,
+            "junit.jupiter.execution.parallel.mode.default"            : "concurrent",
+            "junit.jupiter.execution.parallel.config.strategy"         : "fixed",
+            "junit.jupiter.execution.parallel.config.fixed.parallelism": 4
     ]
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
-    options.compilerArgs += ['-Xlint:deprecation', '-Xlint:unchecked']
+    options.encoding = "UTF-8"
+    options.compilerArgs += ["-Xlint:deprecation", "-Xlint:unchecked"]
 }
 
 tasks.register("printVersion") {

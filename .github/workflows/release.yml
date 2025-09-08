@@ -6,9 +6,6 @@ on:
 jobs:
   linux:
     runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.tag.outputs.tag }}
-      version: ${{ steps.get-version.outputs.version }}
     permissions:
       contents: write
       id-token: write
@@ -16,36 +13,33 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
+        uses: actions/checkout@v5
 
-      - name: Setup GraalVM
-        uses: graalvm/setup-graalvm@v1
-        with:
-          java-version: '21'
-          distribution: 'graalvm-community'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache: 'gradle'
-      - name: Setup Gradle & Compile
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          install-dist: true
-          build-cache-push: false
-          build-cache-enabled: false
-          arguments: clean build nativeCompile --no-daemon --no-build-cache --no-configuration-cache --no-parallel --no-watch-fs --max-workers=1
-
-      - name: Get version from Gradle
-        id: get-version
+      - name: Extract Version from from build.gradle
         run: |
-          VERSION=$(./gradlew printVersion -q --no-daemon --no-build-cache --no-configuration-cache --no-parallel --no-watch-fs --max-workers=1 | tail -1)
-          echo "Version: $VERSION"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$(gradle -q printVersion)" >> $GITHUB_ENV
+          echo "java_version=$(gradle -q printJavaVersion)" >> $GITHUB_ENV
+          echo "gradle_version=$(gradle -q printGradleVersion)" >> $GITHUB_ENV
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.java_version }}
+          cache: 'gradle'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ env.gradle_version }}
+
+      - name: Build with Gradle
+        run: gradle clean buildPlugin --no-daemon --no-build-cache --no-configuration-cache --no-parallel --no-watch-fs --max-workers=1
+
       - name: Ensure tag
         id: tag
         shell: bash
         run: |
-          TAG="v${{ steps.get-version.outputs.version }}"
+          TAG="v${{ env.version }}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           # 只读取远程 tag 索引
           git fetch --tags --force
@@ -57,65 +51,12 @@ jobs:
             git tag -a "$TAG" -m "Release $TAG"
             git push origin "$TAG"
           fi
-      - name: Release Linux assets
+      - name: Release assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            build/native/nativeCompile/pack2server
-            build/libs/*-cli.jar
+            build/libs/*.jar
           generate_release_notes: true
           tag_name: ${{ steps.tag.outputs.tag }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          overwrite_files: true
-
-  windows:
-    needs: linux
-    runs-on: windows-latest
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Unified drive letter
-        shell: pwsh
-        run: |
-          # 确认盘符
-          $drive = (Get-Location).Drive.Name
-          $tgt   = "${drive}:\graalvm"
-          # 创建目录联接
-          cmd /c "mklink /J `"$tgt`" `"$env:JAVA_HOME`""
-          # 同盘临时目录 & Gradle 目录
-          New-Item -ItemType Directory -Force "$env:RUNNER_WORKSPACE\tmp", "$env:RUNNER_WORKSPACE\.gradle"
-          # 写入环境变量
-          "JAVA_HOME=$tgt"                   >> $env:GITHUB_ENV
-          "GRAALVM_HOME=$tgt"                >> $env:GITHUB_ENV
-          "TMP=$env:RUNNER_WORKSPACE\tmp"    >> $env:GITHUB_ENV
-          "TEMP=$env:RUNNER_WORKSPACE\tmp"   >> $env:GITHUB_ENV
-          "TMPDIR=$env:RUNNER_WORKSPACE\tmp" >> $env:GITHUB_ENV
- 
-      - name: Setup GraalVM
-        uses: graalvm/setup-graalvm@v1
-        with:
-          java-version: '21'
-          distribution: 'graalvm-community'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          cache: 'gradle'
-      - name: Setup Gradle & Compile
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          build-cache-push: false
-          build-cache-enabled: false
-          arguments: clean build nativeCompile --no-daemon --no-build-cache --no-configuration-cache --no-parallel --no-watch-fs --max-workers=1
-
-      - name: Release Windows assets
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            build/native/nativeCompile/pack2server.exe
-          generate_release_notes: false
-          tag_name: ${{ needs.linux.outputs.tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
           overwrite_files: true
