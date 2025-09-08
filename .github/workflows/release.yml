@@ -30,13 +30,7 @@ jobs:
         with:
           build-cache-push: false
           build-cache-enabled: false
-          arguments: >
-            clean build nativeCompile --no-daemon
-            -Porg.gradle.daemon=false
-            -Porg.gradle.caching=false
-            -Porg.gradle.parallel=false
-            -Porg.gradle.workers.max=4
-            -Porg.gradle.jvmargs=-Xms1g -Xmx4g -XX:MaxMetaspaceSize=1g
+          arguments:  clean build nativeCompile --no-daemon -Porg.gradle.daemon=false -Porg.gradle.caching=false -Porg.gradle.parallel=false -Porg.gradle.workers.max=4 -Porg.gradle.jvmargs=-Xms1g -Xmx4g -XX:MaxMetaspaceSize=1g
 
       - name: Get version
         id: get-version
@@ -92,14 +86,9 @@ jobs:
       - name: Setup Gradle & Compile
         uses: gradle/actions/setup-gradle@v3
         with:
+          build-cache-push: false
           build-cache-enabled: false
-          arguments: >
-            clean build nativeCompile --no-daemon
-            -Porg.gradle.daemon=false
-            -Porg.gradle.caching=false
-            -Porg.gradle.parallel=false
-            -Porg.gradle.workers.max=4
-            -Porg.gradle.jvmargs=-Xms1g -Xmx4g -XX:MaxMetaspaceSize=1g
+          arguments: clean build nativeCompile --no-daemon -Porg.gradle.daemon=false -Porg.gradle.caching=false -Porg.gradle.parallel=false -Porg.gradle.workers.max=4 -Porg.gradle.jvmargs=-Xms1g -Xmx4g -XX:MaxMetaspaceSize=1g
 
       - name: Rename exe
         shell: bash
