@@ -77,7 +77,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+      - name: Unified drive letter
+        shell: bash
+        run: echo "GRADLE_USER_HOME=$RUNNER_WORKSPACE/.gradle" >> "$GITHUB_ENV"
+ 
       - name: Setup GraalVM
         uses: graalvm/setup-graalvm@v1
         with:
