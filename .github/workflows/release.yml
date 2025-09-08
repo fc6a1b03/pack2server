@@ -85,8 +85,10 @@ jobs:
           # 确认盘符
           DRIVE="${RUNNER_WORKSPACE:0:2}"
           TARGET_JAVA_HOME="${DRIVE}/graalvm"
+          WIN_TARGET=$(cygpath -w "$TARGET_JAVA_HOME")
+          WIN_SOURCE=$(cygpath -w "$JAVA_HOME")
           # 创建目录联接
-          cmd //c "mklink /J \"${TARGET_JAVA_HOME}\" \"${JAVA_HOME}\""
+          cmd //c "mklink /J \"$WIN_TARGET\" \"$WIN_SOURCE\""
           # 同盘临时目录 & Gradle 目录
           mkdir -p "$RUNNER_WORKSPACE/tmp" "$RUNNER_WORKSPACE/.gradle"
           # 写入环境变量
