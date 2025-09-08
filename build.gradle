@@ -80,7 +80,7 @@ graalvmNative {
             '-O3',
             '--gc=serial',
             '--no-fallback',
-            '-march=native',
+            '-march=x86-64',
             '-H:-PrintRuntimeCompileMethods',
             '-H:+ReportExceptionStackTraces',
             '--enable-url-protocols=http,https',
