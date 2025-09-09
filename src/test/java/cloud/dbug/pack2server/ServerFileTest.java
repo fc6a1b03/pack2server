@@ -4,6 +4,7 @@ import cloud.dbug.pack2server.annotation.LocalOnly;
 import cloud.dbug.pack2server.common.ServerWorkspace;
 import cloud.dbug.pack2server.common.detector.ServerModDetector;
 import cloud.dbug.pack2server.common.detector.enums.Side;
+import cloud.dbug.pack2server.common.fetcher.JreFetcher;
 import cloud.dbug.pack2server.common.fetcher.LoaderFetcher;
 import cloud.dbug.pack2server.common.fetcher.ModsBulkFetcher;
 import cn.hutool.core.io.FileUtil;
@@ -86,6 +87,17 @@ public class ServerFileTest {
                 FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6", ServerWorkspace.OVERRIDES),
                 ServerWorkspace.TEST_DIR
         );
+    }
+
+    @Test
+    @DisplayName("Jre提取")
+    public void jreFetcher() {
+        System.setProperty("java.net.preferIPv4Stack", "true");
+        final Path path = JreFetcher.setupRuntime(
+                FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6", ServerWorkspace.MANIFEST).toPath(),
+                FileUtil.file(ServerWorkspace.TEST_DIR).toPath()
+        );
+        Console.log("提取路径 | {}", path);
     }
 
     @Test

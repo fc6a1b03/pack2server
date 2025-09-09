@@ -2,8 +2,8 @@ package cloud.dbug.pack2server.common.fetcher;
 
 import cloud.dbug.pack2server.common.ServerWorkspace;
 import cloud.dbug.pack2server.common.downloader.Downloader;
-import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 
 import java.io.File;
@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -23,27 +24,34 @@ import java.util.stream.Stream;
  */
 public class JreFetcher {
     /**
+     * Jre地址
+     */
+    private static final String JRE_URL = "https://api.adoptium.net/v3/binary/latest/%d/ga/%s/%s/jre/hotspot/normal/eclipse?project=jdk";
+
+    /**
      * 设置运行时
      * @param manifestPath 清单路径
-     * @param jreVersion   JRE 版本
      * @param extractDir   提取目录
      * @return {@link Path }
      */
-    public static Path setupRuntime(final Path manifestPath, final int jreVersion, final Path extractDir) {
-        final int targetVersion = (jreVersion <= 0) ? detectJavaVersion(manifestPath) : jreVersion;
+    public static Path setupRuntime(final Path manifestPath, final Path extractDir) {
         final String os = getNormalizedOS();
         final String arch = getNormalizedArch();
-        final String extension = os.equals("windows") ? "zip" : "tar.gz";
-        final Path downloadPath = extractDir.resolve("jre-runtime.%s".formatted(extension));
+        final int version = detectJavaVersion(manifestPath);
         ServerWorkspace.ensure(extractDir);
         // 下载JRE
+        final Path downloadPath = extractDir.resolve("jre-runtime.%s".formatted(StrUtil.equals(os, "windows") ? "zip" : "tar.gz"));
+        FileUtil.del(downloadPath);
         Downloader.fetchAll(
-                CollUtil.newArrayList(buildJreUrl(targetVersion, os, arch)),
+                List.of(JRE_URL.formatted(version, os, arch)),
                 downloadPath
         );
+        if (!downloadPath.toFile().exists()) {
+            throw new RuntimeException("Jre提取失败");
+        }
         // 记录解压前目录内容
-        final List<Path> preContents = FileUtil.loopFiles(extractDir.toFile())
-                .stream().map(File::toPath).collect(Collectors.toList());
+        final List<Path> preContents = FileUtil.loopFiles(extractDir.toFile()).stream().filter(Objects::nonNull)
+                .map(File::toPath).collect(Collectors.toList());
         // 解压压缩包
         ServerWorkspace.EXTRACT_FILES.callWithRuntimeException(downloadPath, extractDir);
         // 获取新增的JRE目录
@@ -68,20 +76,6 @@ public class JreFetcher {
                     default -> v[1] > 20 ? 21 : 8;
                 })
                 .orElseThrow(() -> new RuntimeException("清单格式无效，请检查整合包"));
-    }
-
-    /**
-     * 创建Jre下载地址
-     * @param version 版本
-     * @param os      操作系统
-     * @param arch    拱
-     * @return {@link String }
-     */
-    private static String buildJreUrl(final int version, final String os, final String arch) {
-        return String.format(
-                "https://api.adoptium.net/v3/binary/latest/%d/ga/%s/%s/jre/hotspot/normal/eclipse?project=jdk",
-                version, os, arch
-        );
     }
 
     /**

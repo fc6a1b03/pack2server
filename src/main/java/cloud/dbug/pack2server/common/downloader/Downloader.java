@@ -22,10 +22,12 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
@@ -49,10 +51,15 @@ public class Downloader {
      * 全局 HTTP/2 客户端
      */
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .priority(1)
             .version(HttpClient.Version.HTTP_2)
             .followRedirects(HttpClient.Redirect.NORMAL)
             .executor(Executors.newVirtualThreadPerTaskExecutor())
             .build();
+    /**
+     * 获取全部
+     */
+    private static final AtomicBoolean FETCH_ALL = new AtomicBoolean(Boolean.FALSE);
     /**
      * 全局虚拟线程池
      */
@@ -96,18 +103,19 @@ public class Downloader {
      * 2. 启动后台虚拟线程每秒打印全局进度<br/>
      * 3. 提交所有下载任务并等待完成<br/>
      * 4. 返回成功数量
-     * @param uris      尤里斯
-     * @param targetDir 目标目录
+     * @param uris   尤里斯
+     * @param target 目标目录
      * @return long
      */
     @SneakyThrows
     @SuppressWarnings({"UnusedReturnValue"})
-    public static long fetchAll(final List<String> uris, final Path targetDir) {
+    public static long fetchAll(final List<String> uris, final Path target) {
         try {
             if (CollUtil.isEmpty(uris)) {
                 return 0;
             }
-            ServerWorkspace.ensure(targetDir);
+            FETCH_ALL.set(Boolean.TRUE);
+            ServerWorkspace.ensure(target);
             // 初始化计数器
             GLOBAL_BYTES.reset();
             GLOBAL_TOTAL.reset();
@@ -128,9 +136,10 @@ public class Downloader {
             });
             // 启动下载
             return uris.parallelStream().filter(Objects::nonNull)
-                    .map(u ->
-                            EXECUTOR.submit(() -> fetch(u, targetDir.resolve(URLDecoder.decode(StrUtil.subAfter(u, "/", Boolean.TRUE), CharsetUtil.CHARSET_UTF_8)), Boolean.TRUE))
-                    )
+                    .map(u -> EXECUTOR.submit(() ->
+                            fetch(u, Opt.ofBlankAble(target.toFile().getName())
+                                    .map(item -> target).orElseGet(() -> target.resolve(URLDecoder.decode(ServerWorkspace.PARSED_NAME.apply(u), CharsetUtil.CHARSET_UTF_8))), Boolean.TRUE)
+                    ))
                     .map(Downloader::get).filter(r -> r == 0).count();
         } finally {
             printTotal();
@@ -162,7 +171,7 @@ public class Downloader {
      * @return int
      */
     public static int fetch(final String uri, final Path target, final boolean resume) {
-        if (StrUtil.isEmpty(uri)) return 0;
+        if (StrUtil.isEmpty(uri)) return 1;
         try {
             final long total = contentLength(uri);
             ServerWorkspace.ensure(target);
@@ -197,7 +206,7 @@ public class Downloader {
     private static void downloadSingle(final String uri, final Path target, final boolean resume,
                                        final LongAdder fileAdder) throws IOException, InterruptedException {
         final long already = resume && Files.exists(target) ? Files.size(target) : 0;
-        final HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(uri)).GET();
+        final HttpRequest.Builder builder = browserDisguise(HttpRequest.newBuilder(URI.create(uri)).GET());
         if (already > 0) {
             builder.header("Range", "bytes=%d-".formatted(already));
         }
@@ -270,9 +279,9 @@ public class Downloader {
      * @throws InterruptedException 中断异常
      */
     private static Void downloadChunk(final String uri, final Path target, final Chunk chunk, final LongAdder fileAdder) throws IOException, InterruptedException {
-        final HttpRequest req = HttpRequest.newBuilder(URI.create(uri))
-                .header("Range", "bytes=%d-%d".formatted(chunk.start, chunk.end))
-                .build();
+        final HttpRequest req = browserDisguise(
+                HttpRequest.newBuilder(URI.create(uri)).header("Range", "bytes=%d-%d".formatted(chunk.start, chunk.end))
+        ).build();
         final HttpResponse<InputStream> resp = HTTP_CLIENT.send(req, HttpResponse.BodyHandlers.ofInputStream());
         if (resp.statusCode() != 206) {
             throw new IOException("块 %s 响应异常 %d".formatted(chunk, resp.statusCode()));
@@ -295,14 +304,26 @@ public class Downloader {
     private static long contentLength(final String uri) {
         try {
             return HTTP_CLIENT.send(
-                    HttpRequest.newBuilder(URI.create(uri))
-                            .method("HEAD", HttpRequest.BodyPublishers.noBody())
-                            .build(),
+                    browserDisguise(
+                            HttpRequest.newBuilder(URI.create(uri)).timeout(Duration.ofSeconds(2))
+                                    .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                    ).build(),
                     HttpResponse.BodyHandlers.discarding()
             ).headers().firstValueAsLong("Content-Length").orElse(-1);
         } catch (final Exception e) {
             return -1;
         }
+    }
+
+    /**
+     * 浏览器伪装
+     * @param builder HTTP参数
+     */
+    private static HttpRequest.Builder browserDisguise(final HttpRequest.Builder builder) {
+        builder.header("Accept", "*/*")
+                .header("Accept-Encoding", "gzip, deflate, br")
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
+        return builder;
     }
 
     /**
@@ -351,13 +372,18 @@ public class Downloader {
         final Long total = FILE_TOTAL.get(target);
         if (Objects.isNull(fileAdder) || Objects.isNull(total) || total <= 0) return;
         final long done = fileAdder.sum();
-        LAST_FILE.set(StrUtil.format(
-                " | {} | {}/{} | ({}%) ",
+        final String format = StrUtil.format(
+                "{} | {}/{} | ({}%) ",
                 target.getFileName(),
                 format(done),
                 format(total),
-                (int) (done * 100 / total))
+                (int) (done * 100 / total)
         );
+        if (FETCH_ALL.get()) {
+            LAST_FILE.set(" | %s".formatted(format));
+        } else {
+            Console.log(format);
+        }
     }
 
     /**
