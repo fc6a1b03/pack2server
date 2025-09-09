@@ -84,7 +84,10 @@ public class ServerWorkspace {
      */
     public static final VoidFunc<Path> EXTRACT_FILES = path -> {
         try (final Extractor extractor = CompressUtil.createExtractor(CharsetUtil.CHARSET_UTF_8, path[0].toFile())) {
-            extractor.extract(path[1].toFile());
+            final File file = path[1].toFile();
+            FileUtil.del(file);
+            ensure(file.toPath());
+            extractor.extract(file);
         }
     };
 

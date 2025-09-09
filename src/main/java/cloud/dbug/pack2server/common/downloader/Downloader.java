@@ -22,7 +22,6 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -305,8 +304,7 @@ public class Downloader {
         try {
             return HTTP_CLIENT.send(
                     browserDisguise(
-                            HttpRequest.newBuilder(URI.create(uri)).timeout(Duration.ofSeconds(2))
-                                    .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                            HttpRequest.newBuilder(URI.create(uri)).method("HEAD", HttpRequest.BodyPublishers.noBody())
                     ).build(),
                     HttpResponse.BodyHandlers.discarding()
             ).headers().firstValueAsLong("Content-Length").orElse(-1);
@@ -351,9 +349,9 @@ public class Downloader {
         final int width = 60;
         final int percent = (int) (bytesDone * 100 / totalBytes);
         final int filled = (int) (width * bytesDone / totalBytes);
-        final String bar = StrUtil.repeat('█', filled) + (percent < 99 ? "" : '█') + StrUtil.repeat(' ', width - filled);
+        final String bar = StrUtil.repeat('█', filled) + (percent < 100 ? "" : '█') + StrUtil.repeat(' ', width - filled);
         Console.log("\r┃" + bar + "┃" +
-                String.format("%4d%% %s/s%s",
+                String.format("%2d%% %s/s%s",
                         percent,
                         formatSpeed(bytesDone * 1000 / Math.max(1, System.currentTimeMillis() - START_MS)),
                         Objects.isNull(LAST_FILE.get()) ? "" : LAST_FILE.get())
