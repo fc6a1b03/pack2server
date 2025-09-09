@@ -70,16 +70,18 @@ public class ConvertCommand implements Callable<Integer> {
         logStage("Stage-3 模组批量下载完成", start);
         /* 5. 服务端侧模组过滤 */
         final ConcurrentLinkedDeque<Path> serverOnlyMods = new ConcurrentLinkedDeque<>();
-        try (final Stream<Path> jarWalk = Files.walk(modDownloadDir)) {
-            jarWalk.filter(p -> FileUtil.isFile(p.toFile()))
-                    .collect(Collectors.toConcurrentMap(p -> p, ServerModDetector::detect))
-                    .forEach((jar, side) -> {
-                        if (side.isServer()) {
-                            serverOnlyMods.add(jar);
-                        } else {
-                            FileUtil.del(jar);
-                        }
-                    });
+        if (FileUtil.exist(modDownloadDir.toFile())) {
+            try (final Stream<Path> jarWalk = Files.walk(modDownloadDir)) {
+                jarWalk.filter(p -> FileUtil.isFile(p.toFile()))
+                        .collect(Collectors.toConcurrentMap(p -> p, ServerModDetector::detect))
+                        .forEach((jar, side) -> {
+                            if (side.isServer()) {
+                                serverOnlyMods.add(jar);
+                            } else {
+                                FileUtil.del(jar);
+                            }
+                        });
+            }
         }
         logStage("Stage-4 服务端模组过滤完成，保留数量=%d".formatted(serverOnlyMods.size()), start);
         /* 6. 覆盖文件复制（零拷贝） */
@@ -95,6 +97,7 @@ public class ConvertCommand implements Callable<Integer> {
         logStage("Stage-7 临时目录清理完成，总耗时=%s".formatted(Duration.between(start, Instant.now())), start);
         /* 8. 初始化运行服务 */
         // TODO: 待实现
+        loader.startByProcess();
         /* 9. 打印运行脚本 */
         // TODO: 待实现
         return 0;
