@@ -95,10 +95,12 @@ public class ConvertCommand implements Callable<Integer> {
         /* 8. 清理临时解压目录 */
         FileUtil.del(extractDir.toFile());
         logStage("Stage-7 临时目录清理完成，总耗时=%s".formatted(Duration.between(start, Instant.now())), start);
-        /* 8. 初始化运行服务 */
+        /* 8. 根据清单加载对应的JRE */
+        // TODO: 待实现
+        /* 9. 初始化运行服务 */
         // TODO: 待实现
         loader.startByProcess();
-        /* 9. 打印运行脚本 */
+        /* 10. 打印运行脚本 */
         // TODO: 待实现
         return 0;
     }

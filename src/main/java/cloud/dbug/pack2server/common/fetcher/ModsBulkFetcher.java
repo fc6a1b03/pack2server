@@ -53,7 +53,7 @@ public class ModsBulkFetcher {
      */
     public static void fetch(final Path manifest, final Path saveDir) {
         if (Files.notExists(manifest)) {
-            Console.log("WARN | MANIFEST_NOT_FOUND | 清单文件不存在，任务终止。 | path={}", manifest.toAbsolutePath());
+            Console.log("WARN | MANIFEST_NOT_FOUND | 清单文件不存在，任务终止 | path={}", manifest.toAbsolutePath());
             return;
         }
         ServerWorkspace.ensure(saveDir);
