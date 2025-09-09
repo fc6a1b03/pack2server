@@ -90,7 +90,7 @@ public class ConvertCommand implements Callable<Integer> {
         logStage("Stage-5 覆盖文件复制完成", start);
         /* 7. 生成加载器 & 启动脚本 */
         final LoaderFetcher.Loader loader = LoaderFetcher.exec(manifestPath, serverOutputDir);
-        Console.log("[CFG] 加载器={}\n[CMD] {}", loader, String.join(" ", loader.cmd()));
+        Console.log("加载器={}\n运行命令={}", loader, String.join(" ", loader.cmd()));
         logStage("Stage-6 加载器生成完成，启动脚本写出结果=%s".formatted(loader.startByProcess()), start);
         /* 8. 清理临时解压目录 */
         FileUtil.del(extractDir.toFile());
