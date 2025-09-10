@@ -3,12 +3,15 @@ package cloud.dbug.pack2server.common.fetcher;
 import cloud.dbug.pack2server.common.ServerWorkspace;
 import cloud.dbug.pack2server.common.downloader.Downloader;
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.lang.Console;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -35,29 +38,36 @@ public class JreFetcher {
      * @return {@link Path }
      */
     public static Path setupRuntime(final Path manifestPath, final Path extractDir) {
+        final Instant start = Instant.now();
         final String os = getNormalizedOS();
         final String arch = getNormalizedArch();
         final int version = detectJavaVersion(manifestPath);
         ServerWorkspace.ensure(extractDir);
-        // 下载JRE
+        final String jreUrl = JRE_URL.formatted(version, os, arch);
+        Console.log("[JRE] 开始下载 | version={} os={} arch={} url={}", version, os, arch, jreUrl);
         final Path downloadPath = extractDir.resolve("jre-runtime.%s".formatted(StrUtil.equals(os, "windows") ? "zip" : "tar.gz"));
         FileUtil.del(downloadPath);
-        Downloader.fetchAll(
-                List.of(JRE_URL.formatted(version, os, arch)),
-                downloadPath
-        );
+        Downloader.fetchAll(List.of(jreUrl), downloadPath);
         if (!downloadPath.toFile().exists()) {
-            throw new RuntimeException("Jre提取失败");
+            throw new RuntimeException("[Jre] 提取失败");
         }
-        // 记录解压前目录内容
-        final List<Path> preContents = FileUtil.loopFiles(extractDir.toFile()).stream().filter(Objects::nonNull)
-                .map(File::toPath).collect(Collectors.toList());
-        // 解压压缩包
+        Console.log(
+                "[JRE] 下载完成 | file={} size={} duration={}",
+                downloadPath.toAbsolutePath(),
+                formatBytes(FileUtil.size(downloadPath.toFile())),
+                Duration.between(start, Instant.now())
+        );
+        Console.log("[JRE] 开始解压 | file={}", downloadPath);
         ServerWorkspace.EXTRACT_FILES.callWithRuntimeException(downloadPath, extractDir);
-        // 获取新增的JRE目录
-        final Path jreHome = findNewSubdirectory(preContents, extractDir).orElseThrow(() -> new RuntimeException("Jre提取失败"));
-        // 清理压缩包
+        // 获取Jre目录
+        final Path jreHome = findNewSubdirectory(
+                FileUtil.loopFiles(extractDir.toFile()).stream().filter(Objects::nonNull)
+                        .map(File::toPath).collect(Collectors.toList()),
+                extractDir.resolve(".jre-runtime")).orElseThrow(() -> new RuntimeException("Jre提取失败")
+        );
+        Console.log("[JRE] 解压完成 | home={}", jreHome);
         FileUtil.del(downloadPath);
+        Console.log("[JRE] 临时包已清理 | file={}", downloadPath);
         return jreHome.toAbsolutePath();
     }
 
@@ -131,5 +141,20 @@ public class JreFetcher {
                         .matcher(arch).matches() ? "x64" : arch)
                 .map(arch -> "aarch64".equalsIgnoreCase(arch) ? "aarch64" : arch)
                 .orElseThrow(() -> new RuntimeException("Jre架构检测失败"));
+    }
+
+    /**
+     * 格式化字节
+     * @param bytes 字节
+     * @return {@link String }
+     */
+    private static String formatBytes(final long bytes) {
+        if (bytes < 1024) return "%d B".formatted(bytes);
+        final double kb = bytes / 1024.0;
+        if (kb < 1024) return String.format("%.1f KB", kb);
+        final double mb = kb / 1024.0;
+        if (mb < 1024) return String.format("%.1f MB", mb);
+        final double gb = mb / 1024.0;
+        return String.format("%.2f GB", gb);
     }
 }

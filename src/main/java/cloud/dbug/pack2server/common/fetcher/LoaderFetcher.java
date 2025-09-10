@@ -131,10 +131,10 @@ public final class LoaderFetcher {
         /**
          * 执行命令
          */
-        public List<String> cmd() {
-            // 命令列表：java -jar <jar> --nogui --universe <cache>
+        public List<String> cmd(final Path jrePath) {
+            // 命令：java -jar <jar> --nogui --universe <cache>
             return List.of(
-                    ServerWorkspace.JAVA_PROGRAM, "-jar", work.resolve(jarName).toString(), "--nogui", "--universe", work.resolve("cache").toString()
+                    ServerWorkspace.JAVA_PROGRAM.apply(jrePath), "-jar", work.resolve(jarName).toString(), "--nogui", "--universe", work.resolve("cache").toString()
             );
         }
 
@@ -143,15 +143,15 @@ public final class LoaderFetcher {
          * @return {@link Process }
          * @throws IOException IOException
          */
-        public Process start() throws IOException {
+        public Process start(final Path jrePath) throws IOException {
             if (SystemUtil.getOsInfo().isWindows()) {
                 return new ProcessBuilder(List.of(
                         "cmd.exe", "/c",
-                        "start", "\"\"", "/B", "/D", work.toString(),
-                        cmd().stream().map("\"%s\""::formatted).collect(Collectors.joining(" "))
+                        "start", "\"\"", "/D", work.toString(),
+                        cmd(jrePath).stream().map("\"%s\""::formatted).collect(Collectors.joining(" "))
                 )).directory(work.toFile()).redirectErrorStream(Boolean.TRUE).start();
             }
-            return new ProcessBuilder(cmd()).directory(work.toFile()).redirectErrorStream(Boolean.TRUE).start();
+            return new ProcessBuilder(cmd(jrePath)).directory(work.toFile()).redirectErrorStream(Boolean.TRUE).start();
         }
 
         /**
@@ -159,8 +159,8 @@ public final class LoaderFetcher {
          * @return {@link String }
          * @throws IOException IOException
          */
-        public String startByProcess() throws IOException {
-            return StrUtil.utf8Str(start().getInputStream().readAllBytes());
+        public String startByProcess(final Path jrePath) throws IOException {
+            return StrUtil.utf8Str(start(jrePath).getInputStream().readAllBytes());
         }
     }
 }

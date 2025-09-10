@@ -4,8 +4,6 @@ import cloud.dbug.pack2server.common.ServerWorkspace;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.lang.Opt;
-import cn.hutool.core.net.URLDecoder;
-import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.core.util.StrUtil;
 import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
@@ -30,6 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 下载器
@@ -84,17 +83,21 @@ public class Downloader {
      */
     private static final AtomicReference<String> LAST_FILE = new AtomicReference<>();
     /**
+     * 每个文件总大小<br/>
+     * KEY: 目标文件路径<br/>
+     * VALUE: 该文件总字节数
+     */
+    private static final ConcurrentMap<Path, Long> FILE_TOTAL = new ConcurrentHashMap<>();
+    /**
      * 每个文件已落盘字节<br/>
      * KEY: 目标文件路径<br/>
      * VALUE: 该文件已落盘字节计数器
      */
     private static final ConcurrentMap<Path, LongAdder> FILE_BYTES = new ConcurrentHashMap<>();
     /**
-     * 每个文件总大小<br/>
-     * KEY: 目标文件路径<br/>
-     * VALUE: 该文件总字节数
+     * 文件锁
      */
-    private static final ConcurrentMap<Path, Long> FILE_TOTAL = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<Path, ReentrantLock> FILE_LOCKS = new ConcurrentHashMap<>();
 
     /**
      * 批量下载（并发）<br/>
@@ -109,40 +112,46 @@ public class Downloader {
     @SneakyThrows
     @SuppressWarnings({"UnusedReturnValue"})
     public static long fetchAll(final List<String> uris, final Path target) {
-        try {
-            if (CollUtil.isEmpty(uris)) {
-                return 0;
-            }
-            FETCH_ALL.set(Boolean.TRUE);
-            ServerWorkspace.ensure(target);
-            // 初始化计数器
-            GLOBAL_BYTES.reset();
-            GLOBAL_TOTAL.reset();
-            FILE_BYTES.clear();
-            FILE_TOTAL.clear();
-            // 并行获取所有文件大小
-            uris.parallelStream().forEach(u -> Opt.of(contentLength(u)).filter(len -> len > 0).ifPresent(GLOBAL_TOTAL::add));
-            // 启动后台进度条
-            START_MS = System.currentTimeMillis();
-            EXECUTOR.submit(() -> {
-                try {
-                    while (GLOBAL_BYTES.sum() < GLOBAL_TOTAL.sum()) {
-                        printTotal();
-                    }
-                } finally {
+        if (CollUtil.isEmpty(uris)) {
+            return 0;
+        }
+        FETCH_ALL.set(Boolean.TRUE);
+        ServerWorkspace.ensure(target);
+        // 初始化各种容器
+        LAST_FILE.set("");
+        FILE_BYTES.clear();
+        FILE_TOTAL.clear();
+        GLOBAL_BYTES.reset();
+        GLOBAL_TOTAL.reset();
+        // 并行获取所有文件大小
+        uris.parallelStream().forEach(u -> Opt.of(contentLength(u)).filter(len -> len > 0).ifPresent(GLOBAL_TOTAL::add));
+        // 启动后台进度条
+        START_MS = System.currentTimeMillis();
+        EXECUTOR.submit(() -> {
+            try {
+                while (GLOBAL_BYTES.sum() < GLOBAL_TOTAL.sum()) {
                     printTotal();
                 }
-            });
-            // 启动下载
-            return uris.parallelStream().filter(Objects::nonNull)
-                    .map(u -> EXECUTOR.submit(() ->
-                            fetch(u, Opt.ofBlankAble(target.toFile().getName())
-                                    .map(item -> target).orElseGet(() -> target.resolve(URLDecoder.decode(ServerWorkspace.PARSED_NAME.apply(u), CharsetUtil.CHARSET_UTF_8))), Boolean.TRUE)
-                    ))
-                    .map(Downloader::get).filter(r -> r == 0).count();
-        } finally {
-            printTotal();
-        }
+            } finally {
+                printTotal();
+            }
+        });
+        // 启动下载
+        return uris.parallelStream()
+                .filter(Objects::nonNull)
+                .map(u -> EXECUTOR.submit(() -> {
+                    // 确定目录
+                    final Path dir = Files.isDirectory(target) ? target : target.getParent();
+                    // 解析器文件名
+                    final String legal = ServerWorkspace.parseFileName(u);
+                    // 空兜底
+                    final String fileName = StrUtil.blankToDefault(legal, "file_%d_%d".formatted(System.currentTimeMillis(), Thread.currentThread().threadId()));
+                    // 拼最终路径
+                    return fetch(u, dir.resolve(fileName), Boolean.TRUE);
+                }))
+                .map(Downloader::get)
+                .filter(r -> r == 0)
+                .count();
     }
 
     /**
@@ -179,9 +188,13 @@ public class Downloader {
             final LongAdder fileAdder = new LongAdder();
             FILE_BYTES.put(target, fileAdder);
             if (total <= CHUNK_THRESHOLD) {
+                // 执行单一下载
                 downloadSingle(uri, target, resume, fileAdder);
             } else {
-                downloadMulti(uri, target, total, resume, fileAdder);
+                // 计算已下载字节
+                final long already = resume && Files.exists(target) ? Files.size(target) : 0;
+                // 执行多部分下载
+                downloadMulti(uri, target, total, already, fileAdder);
             }
             fileAdder.reset();
             fileAdder.add(total);
@@ -204,24 +217,30 @@ public class Downloader {
      */
     private static void downloadSingle(final String uri, final Path target, final boolean resume,
                                        final LongAdder fileAdder) throws IOException, InterruptedException {
-        final long already = resume && Files.exists(target) ? Files.size(target) : 0;
-        final HttpRequest.Builder builder = browserDisguise(HttpRequest.newBuilder(URI.create(uri)).GET());
-        if (already > 0) {
-            builder.header("Range", "bytes=%d-".formatted(already));
-        }
-        final HttpResponse<InputStream> resp = HTTP_CLIENT.send(builder.build(), HttpResponse.BodyHandlers.ofInputStream());
-        final int status = resp.statusCode();
-        if (status != 200 && status != 206) {
-            throw new IOException("单块下载异常 HTTP %d".formatted(status));
-        }
-        // 写入并统计
-        try (final InputStream in = resp.body();
-             final OutputStream out = Files.newOutputStream(target, already > 0 ? StandardOpenOption.APPEND : StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
-            final long before = Files.size(target);
-            in.transferTo(out);
-            final long increment = Files.size(target) - before;
-            fileAdder.add(increment);
-            GLOBAL_BYTES.add(increment);
+        final ReentrantLock lock = FILE_LOCKS.computeIfAbsent(target, k -> new ReentrantLock());
+        lock.lock();
+        try {
+            final long already = resume && Files.exists(target) ? Files.size(target) : 0;
+            final HttpRequest.Builder builder = browserDisguise(HttpRequest.newBuilder(URI.create(uri)).GET());
+            if (already > 0) {
+                builder.header("Range", "bytes=%d-".formatted(already));
+            }
+            final HttpResponse<InputStream> resp = HTTP_CLIENT.send(builder.build(), HttpResponse.BodyHandlers.ofInputStream());
+            final int status = resp.statusCode();
+            if (status != 200 && status != 206) {
+                throw new IOException("单块下载异常 HTTP %d".formatted(status));
+            }
+            // 写入并统计
+            try (final InputStream in = resp.body();
+                 final OutputStream out = Files.newOutputStream(target, already > 0 ? StandardOpenOption.APPEND : StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
+                final long before = Files.size(target);
+                in.transferTo(out);
+                final long increment = Files.size(target) - before;
+                fileAdder.add(increment);
+                GLOBAL_BYTES.add(increment);
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -230,25 +249,30 @@ public class Downloader {
      * @param uri       文件地址
      * @param target    目标
      * @param total     总计
-     * @param resume    简历
+     * @param already   已经
      * @param fileAdder 文件加法器
      * @throws Exception 例外
      */
-    private static void downloadMulti(final String uri, final Path target, final long total, final boolean resume, final LongAdder fileAdder) throws Exception {
-        long already = resume && Files.exists(target) ? Files.size(target) : 0;
-        // 已完整
-        if (already == total) {
-            return;
-        }
-        // 异常残文件
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    private static void downloadMulti(final String uri, final Path target, final long total, final long already, final LongAdder fileAdder) throws Exception {
+        final ReentrantLock lock = FILE_LOCKS.computeIfAbsent(target, k -> new ReentrantLock());
+        lock.lock();
+        // 删除残文件
         if (already > total) {
             Files.deleteIfExists(target);
-            already = 0;
         }
-        // 提交所有块任务并等待
-        buildChunks(total, already).stream().filter(Objects::nonNull)
-                .map(ch -> EXECUTOR.submit(() -> downloadChunk(uri, target, ch, fileAdder)))
-                .forEach(Downloader::get);
+        // 打开文件通道
+        try (final FileChannel fc = FileChannel.open(target, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.SYNC)) {
+            // 预分配空文件（避免稀疏文件）
+            fc.position(total - 1);
+            fc.write(java.nio.ByteBuffer.allocate(1));
+            // 提交所有块任务
+            buildChunks(total, already).stream()
+                    .map(ch -> EXECUTOR.submit(() -> downloadChunk(uri, fc, ch, fileAdder)))
+                    .forEach(Downloader::get);
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**
@@ -271,23 +295,22 @@ public class Downloader {
     /**
      * 下载单个分块
      * @param uri       文件地址
-     * @param target    目标
+     * @param fc        文件通道
      * @param chunk     块
      * @param fileAdder 文件加法器
      * @throws IOException          IOException
      * @throws InterruptedException 中断异常
      */
-    private static Void downloadChunk(final String uri, final Path target, final Chunk chunk, final LongAdder fileAdder) throws IOException, InterruptedException {
+    private static Void downloadChunk(final String uri, final FileChannel fc, final Chunk chunk, final LongAdder fileAdder) throws IOException, InterruptedException {
         final HttpRequest req = browserDisguise(
-                HttpRequest.newBuilder(URI.create(uri)).header("Range", "bytes=%d-%d".formatted(chunk.start, chunk.end))
+                HttpRequest.newBuilder(URI.create(uri))
+                        .header("Range", "bytes=%d-%d".formatted(chunk.start, chunk.end))
         ).build();
         final HttpResponse<InputStream> resp = HTTP_CLIENT.send(req, HttpResponse.BodyHandlers.ofInputStream());
         if (resp.statusCode() != 206) {
             throw new IOException("块 %s 响应异常 %d".formatted(chunk, resp.statusCode()));
         }
-        try (final InputStream in = resp.body();
-             final FileChannel fc = FileChannel.open(target, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
-            fc.position(chunk.start);
+        try (final InputStream in = resp.body()) {
             final long transferred = fc.transferFrom(Channels.newChannel(in), chunk.start, chunk.end - chunk.start + 1);
             fileAdder.add(transferred);
             GLOBAL_BYTES.add(transferred);
@@ -351,7 +374,7 @@ public class Downloader {
         final int filled = (int) (width * bytesDone / totalBytes);
         final String bar = StrUtil.repeat('█', filled) + (percent < 100 ? "" : '█') + StrUtil.repeat(' ', width - filled);
         Console.log("\r┃" + bar + "┃" +
-                String.format("%2d%% %s/s%s",
+                String.format("%5d%% %s/s%s",
                         percent,
                         formatSpeed(bytesDone * 1000 / Math.max(1, System.currentTimeMillis() - START_MS)),
                         Objects.isNull(LAST_FILE.get()) ? "" : LAST_FILE.get())

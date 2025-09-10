@@ -3,9 +3,11 @@ package cloud.dbug.pack2server.cli;
 import cloud.dbug.pack2server.common.ServerWorkspace;
 import cloud.dbug.pack2server.common.detector.ServerModDetector;
 import cloud.dbug.pack2server.common.downloader.Downloader;
+import cloud.dbug.pack2server.common.fetcher.JreFetcher;
 import cloud.dbug.pack2server.common.fetcher.LoaderFetcher;
 import cloud.dbug.pack2server.common.fetcher.ModsBulkFetcher;
 import cloud.dbug.pack2server.entity.Source;
+import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.lang.Opt;
@@ -43,10 +45,32 @@ public class ConvertCommand implements Callable<Integer> {
     @CommandLine.Option(names = {"-o", "--output"}, defaultValue = "./server", description = "Output server directory (default:./server)")
     private Path serverOutputDir;
 
+    /**
+     * 统一结构化日志，方便 grep & 监控。
+     * @param stage 阶段
+     * @param start 开始
+     */
+    private static void logStage(final String stage, final Instant start) {
+        final Instant now = Instant.now();
+        Console.log("[{}] {} | 已耗时={}", DatePattern.NORM_DATETIME_MS_FORMATTER.format(now), stage, Duration.between(start, now));
+    }
+
+    /**
+     * 解析整合包本地路径：若用户给的是 URL 则先下载，否则直接使用本地 zip。
+     */
+    private Path resolvePackPath() {
+        return Opt.ofNullable(source.getZip())
+                .orElseGet(() ->
+                        Downloader.fetch(source.getUrl(), serverOutputDir.resolve(ServerWorkspace.MOD).resolve(source.getName()))
+                );
+    }
+
     @Override
     @SneakyThrows
     public Integer call() {
         final Instant start = Instant.now();
+        // 处理释放目录
+        serverOutputDir = serverOutputDir.toAbsolutePath().normalize();
         logStage("Stage-0 参数解析完成", start);
         /* 1. 获取整合包本地路径（下载或直接使用） */
         final Path packLocalPath = resolvePackPath();
@@ -55,7 +79,9 @@ public class ConvertCommand implements Callable<Integer> {
             return 1;
         }
         /* 2. 清理历史输出目录（如开启 force） */
-        if (forceOverwrite) FileUtil.clean(serverOutputDir.toFile());
+        if (forceOverwrite) {
+            FileUtil.clean(serverOutputDir.toFile());
+        }
         ServerWorkspace.BUILD_DIR.accept(serverOutputDir.toFile());
         logStage("Stage-1 工作目录初始化完成", start);
         /* 3. 解压整合包 -> 临时目录 */
@@ -88,39 +114,18 @@ public class ConvertCommand implements Callable<Integer> {
         final Path overridesDir = extractDir.resolve(ServerWorkspace.OVERRIDES);
         if (Files.exists(overridesDir)) ServerWorkspace.COPY_DIR.get(overridesDir.toFile(), serverOutputDir.toFile());
         logStage("Stage-5 覆盖文件复制完成", start);
-        /* 7. 生成加载器 & 启动脚本 */
+        /* 7. 根据清单加载对应的JRE */
+        final Path jrePath = JreFetcher.setupRuntime(manifestPath, serverOutputDir);
+        logStage("Stage-7 运行环境释放完成，总耗时=%s".formatted(Duration.between(start, Instant.now())), start);
+        /* 8. 生成加载器 & 启动脚本 */
         final LoaderFetcher.Loader loader = LoaderFetcher.exec(manifestPath, serverOutputDir);
-        Console.log("加载器={}\n运行命令={}", loader, String.join(" ", loader.cmd()));
-        logStage("Stage-6 加载器生成完成，启动脚本写出结果=%s".formatted(loader.startByProcess()), start);
-        /* 8. 清理临时解压目录 */
+        Console.log("加载器={}\n运行命令={}", loader, String.join(" ", loader.cmd(jrePath)));
+        logStage("Stage-8 加载器生成完成，启动脚本写出结果=%s".formatted(loader.startByProcess(jrePath)), start);
+        /* 9. 清理临时解压目录 */
         FileUtil.del(extractDir.toFile());
-        logStage("Stage-7 临时目录清理完成，总耗时=%s".formatted(Duration.between(start, Instant.now())), start);
-        /* 8. 根据清单加载对应的JRE */
-        // TODO: 待实现
-        /* 9. 初始化运行服务 */
-        // TODO: 待实现
-        loader.startByProcess();
+        logStage("Stage-9 临时目录清理完成，总耗时=%s".formatted(Duration.between(start, Instant.now())), start);
         /* 10. 打印运行脚本 */
-        // TODO: 待实现
+        logStage("Stage-10 运行脚本=%s".formatted(loader.cmd(jrePath)), start);
         return 0;
-    }
-
-    /**
-     * 解析整合包本地路径：若用户给的是 URL 则先下载，否则直接使用本地 zip。
-     */
-    private Path resolvePackPath() {
-        return Opt.ofNullable(source.getZip())
-                .orElseGet(() ->
-                        Downloader.fetch(source.getUrl(), serverOutputDir.resolve(ServerWorkspace.MOD).resolve(source.getName()))
-                );
-    }
-
-    /**
-     * 统一结构化日志，方便 grep & 监控。
-     * @param stage 阶段
-     * @param start 开始
-     */
-    private static void logStage(final String stage, final Instant start) {
-        Console.log("[{}] {} | 已耗时={}", Instant.now(), stage, Duration.between(start, Instant.now()));
     }
 }

@@ -12,6 +12,7 @@ import cn.hutool.extra.compress.extractor.Extractor;
 import lombok.SneakyThrows;
 
 import java.io.File;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -55,9 +56,12 @@ public class ServerWorkspace {
      */
     public static final List<String> SERVER_DIRS = List.of("mods", "cache", "logs", "versions", "libraries", "config");
     /**
-     * Java
+     * Java路径
      */
-    public static final String JAVA_PROGRAM = Path.of(System.getProperty("java.home"), "bin", "java").toAbsolutePath().toString();
+    public static final Function<Path, String> JAVA_PROGRAM = path ->
+            Path.of(Opt.ofNullable(path).map(item -> path.toAbsolutePath().normalize().toString())
+                            .orElseGet(() -> System.getProperty("java.home")), "bin", "java")
+                    .toAbsolutePath().normalize().toString();
     /**
      * 构建基础目录与文件
      */
@@ -73,12 +77,6 @@ public class ServerWorkspace {
         ServerWorkspace.ensure(dest.toPath());
         return FileUtil.copyContent(src, dest, Boolean.TRUE);
     };
-    /**
-     * 解析名称
-     */
-    public static final Function<String, String> PARSED_NAME = path ->
-            Opt.ofBlankAble(StrUtil.subAfter(path, "/", Boolean.TRUE))
-                    .orElseGet(() -> StrUtil.subAfter(path, "\\", Boolean.TRUE));
     /**
      * 提取文件
      */
@@ -117,5 +115,45 @@ public class ServerWorkspace {
             }
         }
         Opt.ofNullable(runnable).ifPresent(Runnable::run);
+    }
+
+
+    /**
+     * 合法文件名
+     * @param raw 原始
+     * @return {@link String }
+     */
+    public static String legalFileName(final String raw) {
+        return StrUtil.isEmpty(raw) ? "unknown" :
+                // 去掉 Windows 非法字符
+                raw.replaceAll("[\\\\/:*?\"<>|]", "_")
+                        // 空格也替换成 _
+                        .replaceAll("\\s+", "_")
+                        // 多个 _ 合并
+                        .replaceAll("_+", "_");
+    }
+
+    /**
+     * 从 URL 提取“尽可能合理”的文件名
+     * @param uri 统一资源标识符
+     * @return {@link String }
+     */
+    public static String parseFileName(final String uri) {
+        try {
+            final URI u = URI.create(uri);
+            final String path = u.getPath();
+            final String query = u.getQuery();
+            // 路径最后一截
+            String name = StrUtil.emptyToNull(StrUtil.subAfter(path, "/", Boolean.TRUE));
+            // 路径没有就拿查询参数第一个 value
+            if (Objects.isNull(name) && Objects.nonNull(query)) {
+                name = StrUtil.subBefore(query, "&", Boolean.FALSE);
+                name = StrUtil.subAfter(name, "=", Boolean.FALSE);
+            }
+            //  再空就给默认
+            return legalFileName(StrUtil.blankToDefault(name, "file_%d".formatted(System.currentTimeMillis())));
+        } catch (final Exception e) {
+            return "file_%d".formatted(System.currentTimeMillis());
+        }
     }
 }
