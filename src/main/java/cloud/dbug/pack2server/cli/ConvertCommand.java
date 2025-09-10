@@ -119,13 +119,12 @@ public class ConvertCommand implements Callable<Integer> {
         logStage("Stage-7 运行环境释放完成，总耗时=%s".formatted(Duration.between(start, Instant.now())), start);
         /* 8. 生成加载器 & 启动脚本 */
         final LoaderFetcher.Loader loader = LoaderFetcher.exec(manifestPath, serverOutputDir);
-        Console.log("加载器={}\n运行命令={}", loader, String.join(" ", loader.cmd(jrePath)));
         logStage("Stage-8 加载器生成完成，启动脚本写出结果=%s".formatted(loader.startByProcess(jrePath)), start);
         /* 9. 清理临时解压目录 */
         FileUtil.del(extractDir.toFile());
         logStage("Stage-9 临时目录清理完成，总耗时=%s".formatted(Duration.between(start, Instant.now())), start);
         /* 10. 打印运行脚本 */
-        logStage("Stage-10 运行脚本=%s".formatted(loader.cmd(jrePath)), start);
+        logStage("Stage-10 加载器=%s\n运行命令=%s".formatted(loader, loader.cmd(jrePath)), start);
         return 0;
     }
 }
