@@ -47,9 +47,11 @@ public class JreFetcher {
         Console.log("[JRE] 开始下载 | version={} os={} arch={} url={}", version, os, arch, jreUrl);
         final Path downloadPath = extractDir.resolve("jre-runtime.%s".formatted(StrUtil.equals(os, "windows") ? "zip" : "tar.gz"));
         FileUtil.del(downloadPath);
+        // TODO：需返回实际文件名 待处理
         Downloader.fetchAll(List.of(jreUrl), downloadPath);
-        if (!downloadPath.toFile().exists()) {
-            throw new RuntimeException("[Jre] 提取失败");
+        if (Files.notExists(downloadPath)) {
+            Console.error("[JRE] 提取失败");
+            return null;
         }
         Console.log(
                 "[JRE] 下载完成 | file={} size={} duration={}",
