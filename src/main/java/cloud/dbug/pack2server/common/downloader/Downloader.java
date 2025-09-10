@@ -15,6 +15,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -263,9 +264,9 @@ public class Downloader {
         }
         // 打开文件通道
         try (final FileChannel fc = FileChannel.open(target, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.SYNC)) {
-            // 预分配空文件（避免稀疏文件）
+            // 预分配空文件
             fc.position(total - 1);
-            fc.write(java.nio.ByteBuffer.allocate(1));
+            fc.write(ByteBuffer.allocate(1));
             // 提交所有块任务
             buildChunks(total, already).stream()
                     .map(ch -> EXECUTOR.submit(() -> downloadChunk(uri, fc, ch, fileAdder)))
