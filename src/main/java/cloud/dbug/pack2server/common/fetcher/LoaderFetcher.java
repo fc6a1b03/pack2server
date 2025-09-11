@@ -2,6 +2,7 @@ package cloud.dbug.pack2server.common.fetcher;
 
 import cloud.dbug.pack2server.common.ServerWorkspace;
 import cloud.dbug.pack2server.common.downloader.Downloader;
+import cn.hutool.core.collection.ListUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.core.util.StrUtil;
@@ -22,7 +23,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * 服务加载器-生成器
@@ -133,7 +133,7 @@ public final class LoaderFetcher {
          */
         public List<String> cmd(final Path jrePath) {
             // 命令：java -jar <jar> --nogui --universe <cache>
-            return List.of(
+            return ListUtil.toList(
                     ServerWorkspace.JAVA_PROGRAM.apply(jrePath), "-jar", work.resolve(jarName).toString(), "--nogui", "--universe", work.resolve("cache").toString()
             );
         }
@@ -144,14 +144,12 @@ public final class LoaderFetcher {
          * @throws IOException IOException
          */
         public Process start(final Path jrePath) throws IOException {
+            final ProcessBuilder pb = new ProcessBuilder(cmd(jrePath))
+                    .directory(work.toFile()).redirectErrorStream(Boolean.TRUE);
             if (SystemUtil.getOsInfo().isWindows()) {
-                return new ProcessBuilder(List.of(
-                        "cmd.exe", "/c",
-                        "start", "\"\"", "/D", work.toString(),
-                        cmd(jrePath).stream().map("\"%s\""::formatted).collect(Collectors.joining(" "))
-                )).directory(work.toFile()).redirectErrorStream(Boolean.TRUE).start();
+                pb.command().addAll(0, ListUtil.toList("cmd.exe", "/c", "start", "\"Server\""));
             }
-            return new ProcessBuilder(cmd(jrePath)).directory(work.toFile()).redirectErrorStream(Boolean.TRUE).start();
+            return pb.start();
         }
 
         /**
