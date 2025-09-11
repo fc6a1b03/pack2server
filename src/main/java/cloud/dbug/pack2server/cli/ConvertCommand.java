@@ -86,7 +86,7 @@ public class ConvertCommand implements Callable<Integer> {
         logStage("Stage-1 工作目录初始化完成", start);
         /* 3. 解压整合包 -> 临时目录 */
         final Path extractDir = Files.createTempDirectory(serverOutputDir, ".extract_");
-        ServerWorkspace.EXTRACT_FILES.callWithRuntimeException(packLocalPath, extractDir);
+        ServerWorkspace.EXTRACT_FILES.get(packLocalPath, extractDir);
         logStage("Stage-2 整合包解压完成", start);
         /* 4. 模组批量下载 */
         Opt.ofBlankAble(cfApiKey).ifPresent(k -> System.setProperty("CF_API_KEY", k));
@@ -110,11 +110,11 @@ public class ConvertCommand implements Callable<Integer> {
             }
         }
         logStage("Stage-4 服务端模组过滤完成，保留数量=%d".formatted(serverOnlyMods.size()), start);
-        /* 6. 覆盖文件复制（零拷贝） */
+        /* 6. 覆盖文件复制 */
         final Path overridesDir = extractDir.resolve(ServerWorkspace.OVERRIDES);
         if (Files.exists(overridesDir)) ServerWorkspace.COPY_DIR.get(overridesDir.toFile(), serverOutputDir.toFile());
         logStage("Stage-5 覆盖文件复制完成", start);
-        /* 7. 根据清单加载对应的JRE */
+        /* 7. 运行环境释放 */
         final Path jrePath = JreFetcher.setupRuntime(manifestPath, serverOutputDir);
         logStage("Stage-7 运行环境释放完成，总耗时=%s".formatted(Duration.between(start, Instant.now())), start);
         /* 8. 生成加载器 & 启动脚本 */

@@ -1,9 +1,9 @@
 package cloud.dbug.pack2server.common;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.lang.Opt;
 import cn.hutool.core.lang.func.Supplier2;
-import cn.hutool.core.lang.func.VoidFunc;
 import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.extra.compress.CompressUtil;
@@ -11,14 +11,15 @@ import cn.hutool.extra.compress.extractor.Extractor;
 import lombok.SneakyThrows;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * 服务工作区常量
@@ -64,11 +65,10 @@ public class ServerWorkspace {
     /**
      * 构建基础目录与文件
      */
-    public static final Consumer<File> BUILD_DIR = parent ->
-            SERVER_DIRS.forEach(dir -> ServerWorkspace.ensure(Paths.get(dir), () -> {
-                FileUtil.mkdir(FileUtil.file(parent, dir));
-                FileUtil.writeUtf8String("eula=true", FileUtil.file(parent, "eula.txt"));
-            }));
+    public static final Consumer<File> BUILD_DIR = parent -> SERVER_DIRS.forEach(dir -> {
+        FileUtil.mkdir(FileUtil.file(parent, dir));
+        FileUtil.writeUtf8String("eula=true", FileUtil.file(parent, "eula.txt"));
+    });
     /**
      * 复制目录
      */
@@ -79,12 +79,17 @@ public class ServerWorkspace {
     /**
      * 提取文件
      */
-    public static final VoidFunc<Path> EXTRACT_FILES = path -> {
-        try (final Extractor extractor = CompressUtil.createExtractor(CharsetUtil.CHARSET_UTF_8, path[0].toFile())) {
-            final File file = path[1].toFile();
-            FileUtil.del(file);
-            ensure(file.toPath());
-            extractor.extract(file);
+    public static final Supplier2<Path, Path, Path> EXTRACT_FILES = (src, dest) -> {
+        if (Objects.nonNull(src) && Objects.nonNull(dest)) {
+            try (final Extractor extractor = CompressUtil.createExtractor(CharsetUtil.CHARSET_UTF_8, src.toFile())) {
+                extractor.extract(dest.toFile());
+            }
+        }
+        // 只列 dest 下第一层子目录
+        try (final Stream<Path> sub = Files.list(dest)) {
+            return sub.filter(Files::isDirectory).findFirst().orElseThrow(() -> new IORuntimeException("[EXTRACT] 文件释放失败 | home={}", dest));
+        } catch (IOException e) {
+            throw new IORuntimeException(e);
         }
     };
 
@@ -117,7 +122,7 @@ public class ServerWorkspace {
             return;
         }
         // 决定目标类型
-        final boolean asFile = Objects.nonNull(isFile) ? isFile : StrUtil.contains(path.getFileName().toString(), '.');
+        final boolean asFile = Objects.nonNull(isFile) ? isFile : StrUtil.contains(StrUtil.removePrefix(path.getFileName().toString(), "."), '.');
         // 处理父目录
         final Path parent = path.getParent();
         if (Objects.nonNull(parent) && Files.notExists(parent)) {

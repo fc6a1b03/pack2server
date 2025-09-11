@@ -50,7 +50,8 @@ public class ServerFileTest {
     public void extractOriginalModulePackage() {
         final File src = FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6.zip");
         final File dest = FileUtil.file(src.getParentFile(), FileUtil.mainName(src.getName()));
-        ServerWorkspace.EXTRACT_FILES.callWithRuntimeException(src.toPath(), dest.toPath());
+        final Path extractDir = ServerWorkspace.EXTRACT_FILES.get(src.toPath(), dest.toPath());
+        Console.log("检查结果 | {}", extractDir);
     }
 
     @Test

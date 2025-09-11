@@ -365,11 +365,10 @@ public class Downloader {
     /**
      * 等待 Future 完成
      * @param future 未来
-     * @return {@link T }
      */
     @SneakyThrows
-    private static <T> T get(final Future<T> future) {
-        return future.get();
+    private static <T> void get(final Future<T> future) {
+        future.get();
     }
 
     /**
@@ -389,7 +388,7 @@ public class Downloader {
         final int filled = (int) (width * bytesDone / totalBytes);
         final String bar = StrUtil.repeat('█', filled) + (percent < 100 ? "" : '█') + StrUtil.repeat(' ', width - filled);
         Console.log("\r┃" + bar + "┃" +
-                String.format("%5d%% %s/s%s",
+                String.format("%5d%% %s%s",
                         percent,
                         formatSpeed(bytesDone * 1000 / Math.max(1, System.currentTimeMillis() - START_MS)),
                         Objects.isNull(LAST_FILE.get()) ? "" : LAST_FILE.get())

@@ -7,18 +7,14 @@ import cn.hutool.core.lang.Console;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Jre提取器
@@ -26,6 +22,10 @@ import java.util.stream.Stream;
  * @date 2025-09-09
  */
 public class JreFetcher {
+    /**
+     * 释放目录
+     */
+    private static final String RELEASE_DIRECTORY = ".jre-runtime";
     /**
      * Jre地址
      */
@@ -37,11 +37,13 @@ public class JreFetcher {
      * @param extractDir   提取目录
      * @return {@link Path }
      */
-    public static Path setupRuntime(final Path manifestPath, final Path extractDir) {
+    public static Path setupRuntime(final Path manifestPath, Path extractDir) {
         final Instant start = Instant.now();
         final String os = getNormalizedOS();
         final String arch = getNormalizedArch();
         final int version = detectJavaVersion(manifestPath);
+        // 处理释放目录
+        extractDir = extractDir.resolve(RELEASE_DIRECTORY);
         ServerWorkspace.ensure(extractDir);
         final String jreUrl = JRE_URL.formatted(version, os, arch);
         Console.log("[JRE] 开始下载 | version={} os={} arch={} url={}", version, os, arch, jreUrl);
@@ -62,17 +64,12 @@ public class JreFetcher {
                 Duration.between(start, Instant.now())
         );
         Console.log("[JRE] 开始解压 | file={}", jarPath);
-        ServerWorkspace.EXTRACT_FILES.callWithRuntimeException(jarPath, extractDir);
         // 获取Jre目录
-        final Path jreHome = findNewSubdirectory(
-                FileUtil.loopFiles(extractDir.toFile()).stream().filter(Objects::nonNull)
-                        .map(File::toPath).collect(Collectors.toList()),
-                extractDir.resolve(".jre-runtime")).orElseThrow(() -> new RuntimeException("Jre提取失败")
-        );
-        Console.log("[JRE] 解压完成 | home={}", jreHome);
+        final Path jarDir = ServerWorkspace.EXTRACT_FILES.get(jarPath, extractDir);
+        Console.log("[JRE] 解压完成 | home={}", jarDir);
         FileUtil.del(jarPath);
         Console.log("[JRE] 临时包已清理 | file={}", jarPath);
-        return jreHome.toAbsolutePath();
+        return jarDir.toAbsolutePath().normalize();
     }
 
     /**
@@ -90,33 +87,6 @@ public class JreFetcher {
                     default -> v[1] > 20 ? 21 : 8;
                 })
                 .orElseThrow(() -> new RuntimeException("清单格式无效，请检查整合包"));
-    }
-
-    /**
-     * 查找新子目录
-     * @param preExisting 预先存在
-     * @param extractDir  提取目录
-     * @return {@link Optional }<{@link Path }>
-     */
-    private static Optional<Path> findNewSubdirectory(final List<Path> preExisting, final Path extractDir) {
-        try (final Stream<Path> stream = Files.list(extractDir)) {
-            return stream.filter(Files::isDirectory)
-                    .filter(dir -> !preExisting.contains(dir))
-                    .filter(JreFetcher::containsJreFiles)
-                    .findFirst();
-        } catch (final Exception e) {
-            throw new RuntimeException("Jre目录扫描失败", e);
-        }
-    }
-
-    /**
-     * 包含 JRE 文件
-     * @param dir dir
-     * @return boolean
-     */
-    private static boolean containsJreFiles(final Path dir) {
-        return Files.exists(dir.resolve("bin/java")) ||
-                Files.exists(dir.resolve("bin/java.exe"));
     }
 
     /**
