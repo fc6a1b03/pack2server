@@ -4,6 +4,8 @@ import cloud.dbug.pack2server.common.ServerWorkspace;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.lang.Opt;
+import cn.hutool.core.map.MapUtil;
+import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import lombok.SneakyThrows;
 import lombok.experimental.UtilityClass;
@@ -20,9 +22,11 @@ import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -30,6 +34,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 下载器
@@ -38,6 +44,10 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 @UtilityClass
 public class Downloader {
+    /**
+     * 故障路径
+     */
+    private static final Path FAIL_PATH = Paths.get("");
     /**
      * 每块 4 MB
      */
@@ -108,13 +118,13 @@ public class Downloader {
      * 4. 返回成功数量
      * @param uris   尤里斯
      * @param target 目标目录
-     * @return long
+     * @return {@link Map }<{@link String }, {@link Integer }>
      */
     @SneakyThrows
     @SuppressWarnings({"UnusedReturnValue"})
-    public static long fetchAll(final List<String> uris, final Path target) {
+    public static Map<String, Path> fetchAll(final List<String> uris, final Path target) {
         if (CollUtil.isEmpty(uris)) {
-            return 0;
+            return Map.of();
         }
         FETCH_ALL.set(Boolean.TRUE);
         ServerWorkspace.ensure(target);
@@ -124,10 +134,11 @@ public class Downloader {
         FILE_TOTAL.clear();
         GLOBAL_BYTES.reset();
         GLOBAL_TOTAL.reset();
-        // 并行获取所有文件大小
-        uris.parallelStream().forEach(u -> Opt.of(contentLength(u)).filter(len -> len > 0).ifPresent(GLOBAL_TOTAL::add));
         // 启动后台进度条
         START_MS = System.currentTimeMillis();
+        // 并行获取所有文件大小
+        uris.parallelStream().forEach(u -> Opt.of(contentLength(u)).filter(len -> len > 0).ifPresent(GLOBAL_TOTAL::add));
+        // 提交进度检查
         EXECUTOR.submit(() -> {
             try {
                 while (GLOBAL_BYTES.sum() < GLOBAL_TOTAL.sum()) {
@@ -138,21 +149,14 @@ public class Downloader {
             }
         });
         // 启动下载
-        return uris.parallelStream()
-                .filter(Objects::nonNull)
-                .map(u -> EXECUTOR.submit(() -> {
-                    // 确定目录
-                    final Path dir = Files.isDirectory(target) ? target : target.getParent();
-                    // 解析器文件名
-                    final String legal = ServerWorkspace.parseFileName(u);
-                    // 空兜底
-                    final String fileName = StrUtil.blankToDefault(legal, "file_%d_%d".formatted(System.currentTimeMillis(), Thread.currentThread().threadId()));
-                    // 拼最终路径
-                    return fetch(u, dir.resolve(fileName), Boolean.TRUE);
-                }))
-                .map(Downloader::get)
-                .filter(r -> r == 0)
-                .count();
+        return Opt.ofNullable(
+                uris.parallelStream().filter(Objects::nonNull)
+                        .collect(Collectors.toMap(
+                                Function.identity(),
+                                url -> ObjectUtil.defaultIfNull(fetch(url, target, Boolean.TRUE), FAIL_PATH),
+                                (a, b) -> a)
+                        )
+        ).filter(MapUtil::isNotEmpty).orElseGet(MapUtil::empty);
     }
 
     /**
@@ -165,7 +169,7 @@ public class Downloader {
         if (StrUtil.isEmpty(uri)) {
             return null;
         }
-        return fetch(uri, target, Boolean.TRUE) == 0 ? target : null;
+        return fetch(uri, target, Boolean.TRUE);
     }
 
     /**
@@ -174,36 +178,46 @@ public class Downloader {
      * 2. 初始化该文件的进度计数器<br/>
      * 3. 路由到单线程 or 分块下载<br/>
      * 4. 下载完成后打印 100%
-     * @param uri    文件地址
+     * @param url    地址
      * @param target 目标
-     * @param resume 简历
-     * @return int
+     * @param resume 是否续传
+     * @return Path 实际文件的绝对路径
      */
-    public static int fetch(final String uri, final Path target, final boolean resume) {
-        if (StrUtil.isEmpty(uri)) return 1;
+    public static Path fetch(final String url, final Path target, final boolean resume) {
+        if (StrUtil.isEmpty(url)) return null;
         try {
-            final long total = contentLength(uri);
+            // 检查目录或文件
             ServerWorkspace.ensure(target);
+            // 处理文件落盘名称规则
+            final Path absolutePath = Opt.of(Files.isDirectory(target))
+                    .filter(i -> i)
+                    .map(i ->
+                            target.resolve(StrUtil.blankToDefault(
+                                    ServerWorkspace.parseFileName(url),
+                                    "file_%d_%d".formatted(System.currentTimeMillis(), Thread.currentThread().threadId())
+                            )).toAbsolutePath().normalize()
+                    ).orElse(target.toAbsolutePath().normalize());
+            final long total = contentLength(url);
             // 初始化该文件进度
-            FILE_TOTAL.put(target, total);
+            FILE_TOTAL.put(absolutePath, total);
             final LongAdder fileAdder = new LongAdder();
-            FILE_BYTES.put(target, fileAdder);
+            FILE_BYTES.put(absolutePath, fileAdder);
             if (total <= CHUNK_THRESHOLD) {
                 // 执行单一下载
-                downloadSingle(uri, target, resume, fileAdder);
+                downloadSingle(url, absolutePath, resume, fileAdder);
             } else {
                 // 计算已下载字节
-                final long already = resume && Files.exists(target) ? Files.size(target) : 0;
+                final long already = resume && Files.exists(absolutePath) ? Files.size(absolutePath) : 0;
                 // 执行多部分下载
-                downloadMulti(uri, target, total, already, fileAdder);
+                downloadMulti(url, absolutePath, total, already, fileAdder);
             }
             fileAdder.reset();
             fileAdder.add(total);
-            printFile(target);
-            return 0;
+            printFile(absolutePath);
+            return absolutePath;
         } catch (final Exception e) {
             Console.error(e);
-            return 1;
+            return null;
         }
     }
 

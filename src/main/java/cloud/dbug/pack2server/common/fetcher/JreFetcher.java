@@ -45,22 +45,24 @@ public class JreFetcher {
         ServerWorkspace.ensure(extractDir);
         final String jreUrl = JRE_URL.formatted(version, os, arch);
         Console.log("[JRE] 开始下载 | version={} os={} arch={} url={}", version, os, arch, jreUrl);
+        // 生成下载路径
         final Path downloadPath = extractDir.resolve("jre-runtime.%s".formatted(StrUtil.equals(os, "windows") ? "zip" : "tar.gz"));
+        // 清理路径
         FileUtil.del(downloadPath);
-        // TODO：需返回实际文件名 待处理
-        Downloader.fetchAll(List.of(jreUrl), downloadPath);
-        if (Files.notExists(downloadPath)) {
+        // 获取Jre绝对路径
+        final Path jarPath = Downloader.fetchAll(List.of(jreUrl), downloadPath).get(jreUrl);
+        if (Files.notExists(jarPath)) {
             Console.error("[JRE] 提取失败");
             return null;
         }
         Console.log(
                 "[JRE] 下载完成 | file={} size={} duration={}",
-                downloadPath.toAbsolutePath(),
-                formatBytes(FileUtil.size(downloadPath.toFile())),
+                jarPath.toAbsolutePath(),
+                formatBytes(FileUtil.size(jarPath.toFile())),
                 Duration.between(start, Instant.now())
         );
-        Console.log("[JRE] 开始解压 | file={}", downloadPath);
-        ServerWorkspace.EXTRACT_FILES.callWithRuntimeException(downloadPath, extractDir);
+        Console.log("[JRE] 开始解压 | file={}", jarPath);
+        ServerWorkspace.EXTRACT_FILES.callWithRuntimeException(jarPath, extractDir);
         // 获取Jre目录
         final Path jreHome = findNewSubdirectory(
                 FileUtil.loopFiles(extractDir.toFile()).stream().filter(Objects::nonNull)
@@ -68,8 +70,8 @@ public class JreFetcher {
                 extractDir.resolve(".jre-runtime")).orElseThrow(() -> new RuntimeException("Jre提取失败")
         );
         Console.log("[JRE] 解压完成 | home={}", jreHome);
-        FileUtil.del(downloadPath);
-        Console.log("[JRE] 临时包已清理 | file={}", downloadPath);
+        FileUtil.del(jarPath);
+        Console.log("[JRE] 临时包已清理 | file={}", jarPath);
         return jreHome.toAbsolutePath();
     }
 

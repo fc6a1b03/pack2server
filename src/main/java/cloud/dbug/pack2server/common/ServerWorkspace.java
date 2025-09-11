@@ -1,7 +1,6 @@
 package cloud.dbug.pack2server.common;
 
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.io.file.PathUtil;
 import cn.hutool.core.lang.Opt;
 import cn.hutool.core.lang.func.Supplier2;
 import cn.hutool.core.lang.func.VoidFunc;
@@ -90,8 +89,8 @@ public class ServerWorkspace {
     };
 
     /**
-     * 确保目录
-     * @param path 路径
+     * 确保 目录或文件
+     * @param path 路径;有后缀则文件,无后缀则目录
      */
     @SneakyThrows
     public static void ensure(final Path path) {
@@ -99,24 +98,49 @@ public class ServerWorkspace {
     }
 
     /**
-     * 确保目录
-     * @param path     路径
+     * 确保 目录或文件
+     * @param path     路径;有后缀则文件,无后缀则目录
+     * @param runnable 可运行
+     */
+    public static void ensure(final Path path, final Runnable runnable) {
+        ensure(path, null, runnable);
+    }
+
+    /**
+     * 确保 目录或文件
+     * @param path     路径;有后缀则文件,无后缀则目录
      * @param runnable 运行
      */
     @SneakyThrows
-    public static void ensure(final Path path, final Runnable runnable) {
-        if (Objects.nonNull(path)) {
-            final Path parent = path.getParent();
-            if (Objects.nonNull(parent) && Files.notExists(parent)) {
-                Files.createDirectories(parent);
+    public static void ensure(final Path path, final Boolean isFile, final Runnable runnable) {
+        if (Objects.isNull(path)) {
+            return;
+        }
+        // 决定目标类型
+        final boolean asFile = Objects.nonNull(isFile) ? isFile : StrUtil.contains(path.getFileName().toString(), '.');
+        // 处理父目录
+        final Path parent = path.getParent();
+        if (Objects.nonNull(parent) && Files.notExists(parent)) {
+            FileUtil.mkdir(parent);
+        }
+        // 处理当前目录
+        if (Files.exists(path)) {
+            if (asFile && Files.isDirectory(path)) {
+                FileUtil.del(path);
+                Files.createFile(path);
+            } else if (!asFile && Files.isRegularFile(path)) {
+                FileUtil.del(path);
+                FileUtil.mkdir(path);
             }
-            if (PathUtil.isFile(path, Boolean.TRUE) && Files.exists(path)) {
-                Files.delete(path);
+        } else {
+            if (asFile) {
+                Files.createFile(path);
+            } else {
+                FileUtil.mkdir(path);
             }
         }
         Opt.ofNullable(runnable).ifPresent(Runnable::run);
     }
-
 
     /**
      * 合法文件名
