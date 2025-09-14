@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
@@ -100,6 +101,10 @@ public class Downloader {
      */
     private static final ConcurrentMap<Path, Long> FILE_TOTAL = new ConcurrentHashMap<>();
     /**
+     * 文件头
+     */
+    private static final ConcurrentMap<Path, HttpHeaders> FILE_HEADER = new ConcurrentHashMap<>();
+    /**
      * 每个文件已落盘字节<br/>
      * KEY: 目标文件路径<br/>
      * VALUE: 该文件已落盘字节计数器
@@ -132,12 +137,13 @@ public class Downloader {
         LAST_FILE.set("");
         FILE_BYTES.clear();
         FILE_TOTAL.clear();
+        FILE_HEADER.clear();
         GLOBAL_BYTES.reset();
         GLOBAL_TOTAL.reset();
         // 启动后台进度条
         START_MS = System.currentTimeMillis();
         // 并行获取所有文件大小
-        uris.parallelStream().forEach(u -> Opt.of(contentLength(u)).filter(len -> len > 0).ifPresent(GLOBAL_TOTAL::add));
+        uris.parallelStream().forEach(u -> Opt.of(contentLength(u, target)).filter(len -> len > 0).ifPresent(GLOBAL_TOTAL::add));
         // 提交进度检查
         EXECUTOR.submit(() -> {
             try {
@@ -154,8 +160,8 @@ public class Downloader {
                         .collect(Collectors.toMap(
                                 Function.identity(),
                                 url -> ObjectUtil.defaultIfNull(fetch(url, target, Boolean.TRUE), FAIL_PATH),
-                                (a, b) -> a)
-                        )
+                                (a, b) -> a
+                        ))
         ).filter(MapUtil::isNotEmpty).orElseGet(MapUtil::empty);
     }
 
@@ -191,20 +197,25 @@ public class Downloader {
             // 处理文件落盘名称规则
             final Path absolutePath = Opt.of(Files.isDirectory(target))
                     .filter(i -> i)
-                    .map(i ->
-                            target.resolve(StrUtil.blankToDefault(
+                    .map(i -> {
+                        final String filename = filename(url, target);
+                        if (StrUtil.isNotEmpty(filename)) {
+                            return target.resolve(filename);
+                        } else {
+                            return target.resolve(StrUtil.blankToDefault(
                                     ServerWorkspace.parseFileName(url),
                                     "file_%d_%d".formatted(System.currentTimeMillis(), Thread.currentThread().threadId())
-                            )).toAbsolutePath().normalize()
-                    ).orElse(target.toAbsolutePath().normalize());
-            final long total = contentLength(url);
+                            )).toAbsolutePath().normalize();
+                        }
+                    }).orElse(target.toAbsolutePath().normalize());
+            final long total = contentLength(url, target);
             // 初始化该文件进度
             FILE_TOTAL.put(absolutePath, total);
             final LongAdder fileAdder = new LongAdder();
             FILE_BYTES.put(absolutePath, fileAdder);
             if (total <= CHUNK_THRESHOLD) {
                 // 执行单一下载
-                downloadSingle(url, absolutePath, resume, fileAdder);
+                downloadSingle(url, absolutePath, resume, total, fileAdder);
             } else {
                 // 计算已下载字节
                 final long already = resume && Files.exists(absolutePath) ? Files.size(absolutePath) : 0;
@@ -231,10 +242,17 @@ public class Downloader {
      * @throws InterruptedException 中断异常
      */
     private static void downloadSingle(final String uri, final Path target, final boolean resume,
-                                       final LongAdder fileAdder) throws IOException, InterruptedException {
+                                       final long total, final LongAdder fileAdder) throws IOException, InterruptedException {
         final ReentrantLock lock = FILE_LOCKS.computeIfAbsent(target, k -> new ReentrantLock());
         lock.lock();
         try {
+            // 检查文件已是否完整
+            final long size = Files.size(target);
+            if (size == total) {
+                fileAdder.add(size);
+                GLOBAL_BYTES.add(size);
+                return;
+            }
             final long already = resume && Files.exists(target) ? Files.size(target) : 0;
             final HttpRequest.Builder builder = browserDisguise(HttpRequest.newBuilder(URI.create(uri)).GET());
             if (already > 0) {
@@ -245,7 +263,6 @@ public class Downloader {
             if (status != 200 && status != 206) {
                 throw new IOException("单块下载异常 HTTP %d".formatted(status));
             }
-            // 写入并统计
             try (final InputStream in = resp.body();
                  final OutputStream out = Files.newOutputStream(target, already > 0 ? StandardOpenOption.APPEND : StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
                 final long before = Files.size(target);
@@ -335,20 +352,51 @@ public class Downloader {
 
     /**
      * 获取远程文件大小
-     * @param uri 文件地址
+     * @param url 文件地址
      * @return long
      */
-    private static long contentLength(final String uri) {
+    private static long contentLength(final String url, final Path path) {
         try {
-            return HTTP_CLIENT.send(
-                    browserDisguise(
-                            HttpRequest.newBuilder(URI.create(uri)).method("HEAD", HttpRequest.BodyPublishers.noBody())
-                    ).build(),
-                    HttpResponse.BodyHandlers.discarding()
-            ).headers().firstValueAsLong("Content-Length").orElse(-1);
+            return ofHeader(url, path).firstValueAsLong("Content-Length").orElse(-1);
         } catch (final Exception e) {
             return -1;
         }
+    }
+
+    /**
+     * 获取远程文件名
+     * @param url 文件地址
+     * @return String
+     */
+    private static String filename(final String url, final Path path) {
+        try {
+            return ofHeader(url, path).firstValue("content-disposition")
+                    .map(s -> StrUtil.subBetween(s, "filename=\"", "\""))
+                    .orElse("");
+        } catch (final Exception e) {
+            return "";
+        }
+    }
+
+    /**
+     * 获取请求头
+     * @param url  资源地址
+     * @param path 路径
+     * @return {@link HttpHeaders }
+     */
+    private static HttpHeaders ofHeader(final String url, final Path path) {
+        return FILE_HEADER.computeIfAbsent(path, item -> {
+            try {
+                return HTTP_CLIENT.send(
+                        browserDisguise(
+                                HttpRequest.newBuilder(URI.create(url)).method("HEAD", HttpRequest.BodyPublishers.noBody())
+                        ).build(),
+                        HttpResponse.BodyHandlers.discarding()
+                ).headers();
+            } catch (final Exception e) {
+                return null;
+            }
+        });
     }
 
     /**
@@ -356,10 +404,8 @@ public class Downloader {
      * @param builder HTTP参数
      */
     private static HttpRequest.Builder browserDisguise(final HttpRequest.Builder builder) {
-        builder.header("Accept", "*/*")
-                .header("Accept-Encoding", "gzip, deflate, br")
+        return builder.header("Accept", "*/*")
                 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
-        return builder;
     }
 
     /**

@@ -4,6 +4,7 @@ import cloud.dbug.pack2server.common.ServerWorkspace;
 import cloud.dbug.pack2server.common.downloader.Downloader;
 import cn.hutool.core.collection.ListUtil;
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.lang.Opt;
 import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpUtil;
@@ -15,10 +16,10 @@ import com.jayway.jsonpath.JsonPath;
 import lombok.Data;
 import lombok.experimental.UtilityClass;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -57,7 +58,7 @@ public final class LoaderFetcher {
      * @return {@link Loader }
      */
     private static Loader parse(final Path manifest, final Path work) {
-        return Optional.ofNullable(JSONUtil.readJSONObject(manifest.toFile(), CharsetUtil.CHARSET_UTF_8))
+        return Opt.ofNullable(JSONUtil.readJSONObject(manifest.toFile(), CharsetUtil.CHARSET_UTF_8))
                 .map(root -> {
                     final String name = root.getByPath("minecraft.modLoaders[0].id", String.class);
                     return new Loader(work, name, name.replaceFirst("(?<=-)[\\d.]+", "server.jar"), parseUrl(root));
@@ -124,7 +125,9 @@ public final class LoaderFetcher {
          * 下载加载器
          */
         private Loader download(final Path work) {
-            this.path = Downloader.fetch(url, FileUtil.file(work.toFile(), jarName).toPath());
+            final File file = FileUtil.file(work.toFile(), jarName);
+            FileUtil.del(file);
+            this.path = Downloader.fetchAll(ListUtil.toList(url), file.toPath()).get(url);
             return this;
         }
 
@@ -145,11 +148,12 @@ public final class LoaderFetcher {
          */
         public Process start(final Path jrePath) throws IOException {
             final ProcessBuilder pb = new ProcessBuilder(cmd(jrePath))
-                    .directory(work.toFile()).redirectErrorStream(Boolean.TRUE);
+                    .directory(work.toFile());
             if (SystemUtil.getOsInfo().isWindows()) {
-                pb.command().addAll(0, ListUtil.toList("cmd.exe", "/c", "start", "\"Server\""));
+                pb.command().addAll(0, ListUtil.toList("cmd.exe", "/c", "start"));
+                return pb.inheritIO().start();
             }
-            return pb.start();
+            return pb.redirectErrorStream(Boolean.TRUE).start();
         }
 
         /**
