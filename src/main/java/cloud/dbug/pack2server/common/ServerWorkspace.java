@@ -65,10 +65,11 @@ public class ServerWorkspace {
     /**
      * 构建基础目录与文件
      */
-    public static final Consumer<File> BUILD_DIR = parent -> SERVER_DIRS.forEach(dir -> {
-        FileUtil.mkdir(FileUtil.file(parent, dir));
-        FileUtil.writeUtf8String("eula=true", FileUtil.file(parent, "eula.txt"));
-    });
+    public static final Consumer<File> BUILD_DIR = parent -> SERVER_DIRS.forEach(dir -> FileUtil.mkdir(FileUtil.file(parent, dir)));
+    /**
+     * 许可
+     */
+    public static final Consumer<Path> LICENSE = parent -> FileUtil.writeUtf8String("eula=true", FileUtil.file(parent.toFile(), "eula.txt"));
     /**
      * 复制目录
      */

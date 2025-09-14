@@ -144,7 +144,7 @@ public class Downloader {
         START_MS = System.currentTimeMillis();
         // 并行获取所有文件大小
         uris.parallelStream().forEach(u -> Opt.of(contentLength(u, target)).filter(len -> len > 0).ifPresent(GLOBAL_TOTAL::add));
-        // 提交进度检查
+        // 提交进度检查 TODO: 会出现下载器结束，但进度未打印完问题
         EXECUTOR.submit(() -> {
             try {
                 while (GLOBAL_BYTES.sum() < GLOBAL_TOTAL.sum()) {
@@ -247,7 +247,7 @@ public class Downloader {
         lock.lock();
         try {
             // 检查文件已是否完整
-            final long size = Files.size(target);
+            final long size = Files.exists(target) ? Files.size(target) : 0L;
             if (size == total) {
                 fileAdder.add(size);
                 GLOBAL_BYTES.add(size);

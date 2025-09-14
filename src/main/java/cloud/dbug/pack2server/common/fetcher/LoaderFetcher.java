@@ -144,7 +144,9 @@ public final class LoaderFetcher {
          */
         public Process start(final Path jrePath) throws IOException {
             final ProcessBuilder pb = new ProcessBuilder(cmd(jrePath))
-                    .directory(work.toFile());
+                    .directory(work.toFile())
+                    .redirectError(ProcessBuilder.Redirect.INHERIT)
+                    .redirectOutput(ProcessBuilder.Redirect.INHERIT);
             if (SystemUtil.getOsInfo().isWindows()) {
                 pb.command().addAll(0, ListUtil.toList("cmd.exe", "/c", "start"));
                 return pb.inheritIO().start();
@@ -157,8 +159,11 @@ public final class LoaderFetcher {
          * @return {@link String }
          * @throws IOException IOException
          */
-        public String startByProcess(final Path jrePath) throws IOException {
-            return StrUtil.utf8Str(start(jrePath).getInputStream().readAllBytes());
+        public String startByProcess(final Path jrePath) throws IOException, InterruptedException {
+            final Process start = start(jrePath);
+            final String utf8Str = StrUtil.utf8Str(start.getInputStream().readAllBytes());
+            start.waitFor();
+            return utf8Str;
         }
     }
 }

@@ -103,11 +103,11 @@ public class ServerFileTest {
 
     @Test
     @DisplayName("服务加载器生成")
-    public void serviceLoaderGeneration() throws IOException {
+    public void serviceLoaderGeneration() throws IOException, InterruptedException {
         final LoaderFetcher.Loader exec = LoaderFetcher.exec(
                 FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6\\manifest.json").toPath(), ServerWorkspace.TEST_DIR.toPath()
         );
         Console.log("生成配置 | {} \n {}", exec, String.join(" ", exec.cmd(null)));
-        // Console.log("生成结果 | {}", exec.startByProcess(null));
+        Console.log("生成结果 | {}", exec.startByProcess(null));
     }
 }
