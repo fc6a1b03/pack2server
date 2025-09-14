@@ -11,7 +11,6 @@ import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.hutool.system.SystemUtil;
-import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import lombok.Data;
 import lombok.experimental.UtilityClass;
@@ -76,14 +75,11 @@ public final class LoaderFetcher {
         final String id = root.getByPath("minecraft.modLoaders[0].id", String.class);
         final String[] sp = id.split("-");
         return switch (sp[0]) {
-            case "fabric" -> {
-                final DocumentContext context = JsonPath.parse(HttpUtil.get("https://meta.fabricmc.net/v2/versions"));
-                yield "https://meta.fabricmc.net/v2/versions/loader/%s/%s/%s/server/jar".formatted(
-                        context.read("$.game[?(@.stable==true)].version", List.class).getFirst(),
-                        context.read("$.loader[?(@.stable==true)].version", List.class).getFirst(),
-                        context.read("$.installer[?(@.stable==true)].version", List.class).getFirst()
-                );
-            }
+            case "fabric" -> "https://meta.fabricmc.net/v2/versions/loader/%s/%s/%s/server/jar".formatted(
+                    mc, sp[1],
+                    JsonPath.parse(HttpUtil.get("https://meta.fabricmc.net/v2/versions"))
+                            .read("$.installer[?(@.stable==true)].version", List.class).getFirst()
+            );
             // TODO: 待完善
             case "forge" ->
                     "https://maven.minecraftforge.net/net/minecraftforge/forge/%1$s-%2$s/forge-%1$s-%2$s.jar".formatted(mc, sp[1]);
