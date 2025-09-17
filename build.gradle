@@ -8,7 +8,7 @@ version = "0.11"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
@@ -24,7 +24,7 @@ repositories {
 
 ext {
     hutoolVersion = "5.8.40"
-    lombokVersion = "1.18.38"
+    lombokVersion = "1.18.40"
     picocliVersion = "4.7.7"
     jsonpathVersion = "2.9.0"
     lombokCAVersion = "0.2.0"
