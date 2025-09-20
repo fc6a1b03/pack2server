@@ -109,6 +109,7 @@ public class JreFetcher {
      * 获得架构
      * @return {@link String }
      */
+    @SuppressWarnings("SpellCheckingInspection")
     private static String getNormalizedArch() {
         return Optional.ofNullable(System.getProperty("os.arch"))
                 .map(arch -> Pattern.compile("^(x8664|amd64|ia32e|em64t|x64|x86_64)$", Pattern.CASE_INSENSITIVE)

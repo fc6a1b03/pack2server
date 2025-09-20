@@ -160,7 +160,7 @@ public class Downloader {
                         .collect(Collectors.toMap(
                                 Function.identity(),
                                 url -> ObjectUtil.defaultIfNull(fetch(url, target, Boolean.TRUE), FAIL_PATH),
-                                (a, b) -> a
+                                (a, _) -> a
                         ))
         ).filter(MapUtil::isNotEmpty).orElseGet(MapUtil::empty);
     }
@@ -197,7 +197,7 @@ public class Downloader {
             // 处理文件落盘名称规则
             final Path absolutePath = Opt.of(Files.isDirectory(target))
                     .filter(i -> i)
-                    .map(i -> {
+                    .map(_ -> {
                         final String filename = filename(url, target);
                         if (StrUtil.isNotEmpty(filename)) {
                             return target.resolve(filename);
@@ -243,7 +243,7 @@ public class Downloader {
      */
     private static void downloadSingle(final String uri, final Path target, final boolean resume,
                                        final long total, final LongAdder fileAdder) throws IOException, InterruptedException {
-        final ReentrantLock lock = FILE_LOCKS.computeIfAbsent(target, k -> new ReentrantLock());
+        final ReentrantLock lock = FILE_LOCKS.computeIfAbsent(target, _ -> new ReentrantLock());
         lock.lock();
         try {
             // 检查文件已是否完整
@@ -287,7 +287,7 @@ public class Downloader {
      */
     @SuppressWarnings("ResultOfMethodCallIgnored")
     private static void downloadMulti(final String uri, final Path target, final long total, final long already, final LongAdder fileAdder) throws Exception {
-        final ReentrantLock lock = FILE_LOCKS.computeIfAbsent(target, k -> new ReentrantLock());
+        final ReentrantLock lock = FILE_LOCKS.computeIfAbsent(target, _ -> new ReentrantLock());
         lock.lock();
         // 删除残文件
         if (already > total) {
@@ -385,7 +385,7 @@ public class Downloader {
      * @return {@link HttpHeaders }
      */
     private static HttpHeaders ofHeader(final String url, final Path path) {
-        return FILE_HEADER.computeIfAbsent(path, item -> {
+        return FILE_HEADER.computeIfAbsent(path, _ -> {
             try {
                 return HTTP_CLIENT.send(
                         browserDisguise(
@@ -405,7 +405,7 @@ public class Downloader {
      */
     private static HttpRequest.Builder browserDisguise(final HttpRequest.Builder builder) {
         return builder.header("Accept", "*/*")
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (HTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
     }
 
     /**
