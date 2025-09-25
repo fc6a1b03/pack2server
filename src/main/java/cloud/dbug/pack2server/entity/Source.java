@@ -33,6 +33,6 @@ public class Source {
      * @return {@link String }
      */
     public String getName() {
-        return ServerWorkspace.PARSED_NAME.apply(getUrl());
+        return ServerWorkspace.parseFileName(getUrl());
     }
 }

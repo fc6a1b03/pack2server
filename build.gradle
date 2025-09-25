@@ -1,14 +1,14 @@
 plugins {
     id "java"
-    id "com.gradleup.shadow" version "9.1.0"
+    id "com.gradleup.shadow" version "9.2.1"
 }
 
 group = "cloud.dbug.pack2server"
-version = "0.10"
+version = "0.11"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
@@ -24,10 +24,10 @@ repositories {
 
 ext {
     hutoolVersion = "5.8.40"
-    lombokVersion = "1.18.38"
     picocliVersion = "4.7.7"
     jsonpathVersion = "2.9.0"
     lombokCAVersion = "0.2.0"
+    lombokVersion = "1.18.42"
     compressVersion = "1.28.0"
     junitJupiterVersion = "5.13.4"
 }

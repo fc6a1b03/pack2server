@@ -4,6 +4,7 @@ import cloud.dbug.pack2server.annotation.LocalOnly;
 import cloud.dbug.pack2server.common.ServerWorkspace;
 import cloud.dbug.pack2server.common.detector.ServerModDetector;
 import cloud.dbug.pack2server.common.detector.enums.Side;
+import cloud.dbug.pack2server.common.fetcher.JreFetcher;
 import cloud.dbug.pack2server.common.fetcher.LoaderFetcher;
 import cloud.dbug.pack2server.common.fetcher.ModsBulkFetcher;
 import cn.hutool.core.io.FileUtil;
@@ -49,7 +50,8 @@ public class ServerFileTest {
     public void extractOriginalModulePackage() {
         final File src = FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6.zip");
         final File dest = FileUtil.file(src.getParentFile(), FileUtil.mainName(src.getName()));
-        ServerWorkspace.EXTRACT_FILES.callWithRuntimeException(src.toPath(), dest.toPath());
+        final Path extractDir = ServerWorkspace.EXTRACT_FILES.get(src.toPath(), dest.toPath());
+        Console.log("检查结果 | {}", extractDir);
     }
 
     @Test
@@ -89,12 +91,22 @@ public class ServerFileTest {
     }
 
     @Test
+    @DisplayName("Jre提取")
+    public void jreFetcher() {
+        final Path path = JreFetcher.setupRuntime(
+                FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6", ServerWorkspace.MANIFEST).toPath(),
+                FileUtil.file(ServerWorkspace.TEST_DIR).toPath()
+        );
+        Console.log("提取路径 | {}", path);
+    }
+
+    @Test
     @DisplayName("服务加载器生成")
-    public void serviceLoaderGeneration() throws IOException {
+    public void serviceLoaderGeneration() throws IOException, InterruptedException {
         final LoaderFetcher.Loader exec = LoaderFetcher.exec(
                 FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6\\manifest.json").toPath(), ServerWorkspace.TEST_DIR.toPath()
         );
-        Console.log("生成配置 | {} \n {}", exec, String.join(" ", exec.cmd()));
-        Console.log("生成结果 | {}", exec.startByProcess());
+        Console.log("生成配置 | {} \n {}", exec, String.join(" ", exec.cmd(null)));
+        Console.log("生成结果 | {}", exec.startByProcess(null));
     }
 }

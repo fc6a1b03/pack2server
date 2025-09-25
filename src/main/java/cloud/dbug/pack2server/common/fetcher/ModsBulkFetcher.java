@@ -53,27 +53,27 @@ public class ModsBulkFetcher {
      */
     public static void fetch(final Path manifest, final Path saveDir) {
         if (Files.notExists(manifest)) {
-            Console.log("WARN | MANIFEST_NOT_FOUND | 清单文件不存在，任务终止。 | path={}", manifest.toAbsolutePath());
+            Console.log("[Mods] 清单文件不存在，任务终止 | path={}", manifest.toAbsolutePath());
             return;
         }
         ServerWorkspace.ensure(saveDir);
         // 解析模组
         final List<Mod> mods = parseMods(manifest);
-        Console.log("INFO | PARSE_COMPLETE | 模组清单，解析完成 | mods={}", mods.size());
+        Console.log("[MODS] 模组清单，解析完成 | mods={}", mods.size());
         if (mods.isEmpty()) {
-            Console.log("INFO | EMPTY_MANIFEST | 无有效模组，任务结束");
+            Console.log("[MODS] 无有效模组，任务结束");
             return;
         }
         // 批量获取下载地址
         final Map<Long, String> id2url = queryDownloadUrl(mods);
-        Console.log("INFO | URL_QUERY_COMPLETE | 模组下载地址，获取完成 | mods={}", id2url.size());
+        Console.log("[MODS] 模组下载地址，获取完成 | mods={}", id2url.size());
         // 矢量化组装下载任务
         final List<String> tasks = mods.stream().filter(Objects::nonNull)
                 .map(m -> id2url.getOrDefault(m.fileId, ""))
                 .filter(StrUtil::isNotEmpty).toList();
-        Console.log("INFO | DOWNLOAD_START | 开始批量下载 | tasks={}", tasks.size());
+        Console.log("[MODS] 开始批量下载 | tasks={}", tasks.size());
         Downloader.fetchAll(tasks, saveDir);
-        Console.log("INFO | DOWNLOAD_FINISH | 全部模组，下载完成 | dir={}", saveDir.toAbsolutePath());
+        Console.log("[MODS] 全部模组，下载完成 | dir={}", saveDir.toAbsolutePath());
     }
 
     /**
@@ -114,7 +114,7 @@ public class ModsBulkFetcher {
                                 .filter(o -> StrUtil.isNotEmpty(o.getStr("downloadUrl")))
                                 .map(obj -> Map.entry(obj.getLong("id"), obj.getStr("downloadUrl")));
                     } catch (final Exception e) {
-                        Console.log("WARN | DOWNLOAD_URL_NOT_FOUND | 模组地址获取失败 | body={}", body);
+                        Console.log("[MODS] 模组地址获取失败 | body={}", body);
                         return null;
                     }
                 }).filter(Objects::nonNull)

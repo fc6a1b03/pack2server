@@ -2,27 +2,27 @@ package cloud.dbug.pack2server.common.fetcher;
 
 import cloud.dbug.pack2server.common.ServerWorkspace;
 import cloud.dbug.pack2server.common.downloader.Downloader;
+import cn.hutool.core.collection.ListUtil;
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.lang.Opt;
 import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import cn.hutool.system.SystemUtil;
-import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import lombok.Data;
 import lombok.experimental.UtilityClass;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * 服务加载器-生成器
@@ -57,7 +57,7 @@ public final class LoaderFetcher {
      * @return {@link Loader }
      */
     private static Loader parse(final Path manifest, final Path work) {
-        return Optional.ofNullable(JSONUtil.readJSONObject(manifest.toFile(), CharsetUtil.CHARSET_UTF_8))
+        return Opt.ofNullable(JSONUtil.readJSONObject(manifest.toFile(), CharsetUtil.CHARSET_UTF_8))
                 .map(root -> {
                     final String name = root.getByPath("minecraft.modLoaders[0].id", String.class);
                     return new Loader(work, name, name.replaceFirst("(?<=-)[\\d.]+", "server.jar"), parseUrl(root));
@@ -75,14 +75,11 @@ public final class LoaderFetcher {
         final String id = root.getByPath("minecraft.modLoaders[0].id", String.class);
         final String[] sp = id.split("-");
         return switch (sp[0]) {
-            case "fabric" -> {
-                final DocumentContext context = JsonPath.parse(HttpUtil.get("https://meta.fabricmc.net/v2/versions"));
-                yield "https://meta.fabricmc.net/v2/versions/loader/%s/%s/%s/server/jar".formatted(
-                        context.read("$.game[?(@.stable==true)].version", List.class).getFirst(),
-                        context.read("$.loader[?(@.stable==true)].version", List.class).getFirst(),
-                        context.read("$.installer[?(@.stable==true)].version", List.class).getFirst()
-                );
-            }
+            case "fabric" -> "https://meta.fabricmc.net/v2/versions/loader/%s/%s/%s/server/jar".formatted(
+                    mc, sp[1],
+                    JsonPath.parse(HttpUtil.get("https://meta.fabricmc.net/v2/versions"))
+                            .read("$.installer[?(@.stable==true)].version", List.class).getFirst()
+            );
             // TODO: 待完善
             case "forge" ->
                     "https://maven.minecraftforge.net/net/minecraftforge/forge/%1$s-%2$s/forge-%1$s-%2$s.jar".formatted(mc, sp[1]);
@@ -124,17 +121,19 @@ public final class LoaderFetcher {
          * 下载加载器
          */
         private Loader download(final Path work) {
-            this.path = Downloader.fetch(url, FileUtil.file(work.toFile(), jarName).toPath());
+            final File file = FileUtil.file(work.toFile(), jarName);
+            FileUtil.del(file);
+            this.path = Downloader.fetch(url, file.toPath());
             return this;
         }
 
         /**
          * 执行命令
          */
-        public List<String> cmd() {
-            // 命令列表：java -jar <jar> --nogui --universe <cache>
-            return List.of(
-                    ServerWorkspace.JAVA_PROGRAM, "-jar", work.resolve(jarName).toString(), "--nogui", "--universe", work.resolve("cache").toString()
+        public List<String> cmd(final Path jrePath) {
+            // 命令：java -jar <jar> --nogui --universe <cache>
+            return ListUtil.toList(
+                    ServerWorkspace.JAVA_PROGRAM.apply(jrePath), "-jar", work.resolve(jarName).toString(), "--nogui", "--universe", work.resolve("cache").toString()
             );
         }
 
@@ -143,15 +142,16 @@ public final class LoaderFetcher {
          * @return {@link Process }
          * @throws IOException IOException
          */
-        public Process start() throws IOException {
+        public Process start(final Path jrePath) throws IOException {
+            final ProcessBuilder pb = new ProcessBuilder(cmd(jrePath))
+                    .directory(work.toFile())
+                    .redirectError(ProcessBuilder.Redirect.INHERIT)
+                    .redirectOutput(ProcessBuilder.Redirect.INHERIT);
             if (SystemUtil.getOsInfo().isWindows()) {
-                return new ProcessBuilder(List.of(
-                        "cmd.exe", "/c",
-                        "start", "\"\"", "/B", "/D", work.toString(),
-                        cmd().stream().map("\"%s\""::formatted).collect(Collectors.joining(" "))
-                )).directory(work.toFile()).redirectErrorStream(Boolean.TRUE).start();
+                pb.command().addAll(0, ListUtil.toList("cmd.exe", "/c", "start"));
+                return pb.inheritIO().start();
             }
-            return new ProcessBuilder(cmd()).directory(work.toFile()).redirectErrorStream(Boolean.TRUE).start();
+            return pb.redirectErrorStream(Boolean.TRUE).start();
         }
 
         /**
@@ -159,8 +159,11 @@ public final class LoaderFetcher {
          * @return {@link String }
          * @throws IOException IOException
          */
-        public String startByProcess() throws IOException {
-            return StrUtil.utf8Str(start().getInputStream().readAllBytes());
+        public String startByProcess(final Path jrePath) throws IOException, InterruptedException {
+            final Process start = start(jrePath);
+            final String utf8Str = StrUtil.utf8Str(start.getInputStream().readAllBytes());
+            start.waitFor();
+            return utf8Str;
         }
     }
 }

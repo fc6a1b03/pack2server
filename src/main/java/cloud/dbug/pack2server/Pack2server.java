@@ -23,7 +23,7 @@ public class Pack2server implements Runnable {
         Console.log("Run 'pack2server convert - h' to understand its usage");
     }
 
-    public static void main(final String[] args) {
+    static void main(final String[] args) {
         System.exit(new CommandLine(new Pack2server()).execute(args));
     }
 }
