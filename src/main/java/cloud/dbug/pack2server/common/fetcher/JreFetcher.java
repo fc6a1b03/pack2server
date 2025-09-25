@@ -46,7 +46,7 @@ public class JreFetcher {
         extractDir = extractDir.resolve(RELEASE_DIRECTORY);
         ServerWorkspace.ensure(extractDir);
         final String jreUrl = JRE_URL.formatted(version, os, arch);
-        Console.log("[JRE] 开始下载 | version={} os={} arch={} url={}", version, os, arch, jreUrl);
+        Console.log("[JRE] 信息 | version={} os={} arch={} url={}", version, os, arch, jreUrl);
         // 生成下载路径
         final Path downloadPath = extractDir.resolve("jre-runtime.%s".formatted(StrUtil.equals(os, "windows") ? "zip" : "tar.gz"));
         // 清理路径
@@ -58,7 +58,7 @@ public class JreFetcher {
             return null;
         }
         Console.log(
-                "[JRE] 下载完成 | file={} size={} duration={}",
+                "[JRE] 信息 | file={} size={} duration={}",
                 jarPath.toAbsolutePath(),
                 formatBytes(FileUtil.size(jarPath.toFile())),
                 Duration.between(start, Instant.now())
