@@ -123,7 +123,7 @@ public final class LoaderFetcher {
         private Loader download(final Path work) {
             final File file = FileUtil.file(work.toFile(), jarName);
             FileUtil.del(file);
-            this.path = Downloader.fetchAll(ListUtil.toList(url), file.toPath()).get(url);
+            this.path = Downloader.fetch(url, file.toPath());
             return this;
         }
 

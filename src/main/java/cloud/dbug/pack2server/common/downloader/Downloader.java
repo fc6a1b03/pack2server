@@ -31,6 +31,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -49,6 +51,10 @@ public class Downloader {
      */
     private static final int DEFAULT_THREAD_COUNT = 4;
     /**
+     * 进度打印的最小时间间隔（毫秒）
+     */
+    private static final long PROGRESS_PRINT_INTERVAL_MILLIS = 800;
+    /**
      * HTTP请求超时时间（秒）
      */
     private static final Duration TIMEOUT_DURATION = Duration.ofSeconds(30);
@@ -66,6 +72,10 @@ public class Downloader {
             .followRedirects(HttpClient.Redirect.NORMAL)
             .executor(Executors.newVirtualThreadPerTaskExecutor())
             .build();
+    /**
+     * 解析 Content-Disposition 头
+     */
+    private static final Pattern CONTENT_DISPOSITION_PATTERN = Pattern.compile("filename\\*?=(?:UTF-8'')?(?:\"([^\"]+)\")?");
 
     /**
      * 批量下载多个文件
@@ -86,6 +96,7 @@ public class Downloader {
             final List<CompletableFuture<Map.Entry<String, Path>>> futures = urlList.stream().filter(StrUtil::isNotEmpty)
                     .map(url -> CompletableFuture.supplyAsync(() -> {
                                 try {
+                                    // --- 修改点：调用新的 extractFileName 方法 ---
                                     final String fileName = extractFileName(url).orElse("downloaded_file_" + System.currentTimeMillis());
                                     final Path targetPath = targetDirectory.resolve(fileName);
                                     final Path resultPath = fetch(url, targetPath);
@@ -158,10 +169,8 @@ public class Downloader {
                 throw new IOException("未能探测服务器功能。头: %d, GET: %d".formatted(headStatusCode, getStatusCode));
             }
         }
-
-        // --- 初始化进度跟踪 (在此处传递探测到的 totalFileSize) ---
+        // --- 初始化进度跟踪 ---
         initializeProgress(fileUrl, targetPath, totalFileSize);
-
         // --- 根据探测结果选择下载策略 ---
         if (totalFileSize <= 0) {
             // 情况1: 无法获取文件大小，使用流式下载
@@ -232,7 +241,7 @@ public class Downloader {
             while ((bytesRead = inputStream.read(buffer)) != -1) {
                 randomAccessFile.write(buffer, 0, bytesRead);
                 updateProgress(fileUrl, bytesRead);
-                // 打印进度条
+                // 打印进度条 (现在由 DownloadProgress 内部控制频率)
                 Opt.ofNullable(progressMap.get(fileUrl)).ifPresent(DownloadProgress::printProgressBar);
             }
         }
@@ -258,8 +267,8 @@ public class Downloader {
             long position = 0;
             while ((count = fileChannel.transferFrom(readableByteChannel, position, BUFFER_SIZE)) > 0) {
                 position += count;
-                updateProgress(fileUrl, count); // Fix applied here too
-                // 打印进度条
+                updateProgress(fileUrl, count);
+                // 打印进度条 (现在由 DownloadProgress 内部控制频率)
                 Opt.ofNullable(progressMap.get(fileUrl)).ifPresent(DownloadProgress::printProgressBar);
             }
         }
@@ -283,24 +292,89 @@ public class Downloader {
             while ((bytesRead = inputStream.read(buffer)) != -1) {
                 outputStream.write(buffer, 0, bytesRead);
                 updateProgress(fileUrl, bytesRead); // Fix applied here too
-                // 打印进度条
+                // 打印进度条 (现在由 DownloadProgress 内部控制频率)
                 Opt.ofNullable(progressMap.get(fileUrl)).ifPresent(DownloadProgress::printProgressBar);
             }
         }
     }
 
     /**
-     * 提取URL中的文件名
+     * 提取URL中的文件名<br/>
+     * 优先尝试从HTTP响应头(Content-Disposition)获取，<br/>
+     * 如果失败则回退到基于URL路径的方法。<br/>
      * @param fileUrl 文件URL
      * @return 文件名的Optional
      */
     private Optional<String> extractFileName(final String fileUrl) {
+        // 1. 首先尝试通过发送一个 HEAD 请求来获取 Content-Disposition 头
         try {
-            final String fileName = Paths.get(URI.create(fileUrl).getPath()).getFileName().toString();
-            return fileName.isEmpty() ? Optional.empty() : Optional.of(fileName);
-        } catch (final Exception e) {
-            return Optional.empty();
+            final HttpRequest headRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(fileUrl)).timeout(TIMEOUT_DURATION)
+                    .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                    .build();
+            // 发送同步请求
+            final HttpResponse<Void> response = httpClient.send(headRequest, HttpResponse.BodyHandlers.discarding());
+            // 检查响应头
+            final Optional<String> contentDispositionHeaderOpt = response.headers().firstValue("Content-Disposition");
+            if (contentDispositionHeaderOpt.isPresent()) {
+                final String contentDisposition = contentDispositionHeaderOpt.get();
+                // 解析 Content-Disposition 头
+                final Matcher matcher = CONTENT_DISPOSITION_PATTERN.matcher(contentDisposition.trim());
+                if (matcher.find()) {
+                    // group(1) 匹配的是引号内的内容
+                    String encodedFilename = matcher.group(1);
+                    if (encodedFilename != null && !encodedFilename.isEmpty()) {
+                        // 处理 filename*=utf-8''encoded name 形式 (RFC 5987)
+                        if (contentDisposition.contains("filename*=")) {
+                            // 示例: filename*=UTF-8''%e6%b5%8b%e8%af%95.txt
+                            final int utf8Index = contentDisposition.indexOf("UTF-8''");
+                            if (utf8Index != -1) {
+                                encodedFilename = contentDisposition.substring(utf8Index + "UTF-8''".length());
+                            }
+                            // URL解码
+                            try {
+                                final String decodedFilename = java.net.URLDecoder.decode(encodedFilename, java.nio.charset.StandardCharsets.UTF_8);
+                                if (!decodedFilename.isEmpty()) {
+                                    Console.log("从 Content-Disposition (RFC 5987) 提取到文件名: {}", decodedFilename);
+                                    return Optional.of(decodedFilename);
+                                }
+                            } catch (final Exception e) {
+                                // 回退到未编码的 filename*
+                                try {
+                                    final String fallbackDecoded = java.net.URLDecoder.decode(matcher.group(1), java.nio.charset.StandardCharsets.ISO_8859_1);
+                                    if (!fallbackDecoded.isEmpty()) {
+                                        Console.log("回退到 ISO-8859-1 解码 filename*: {}", fallbackDecoded);
+                                        return Optional.of(fallbackDecoded);
+                                    }
+                                } catch (final Exception _) {
+                                }
+                            }
+                        } else {
+                            Console.log("从 Content-Disposition 提取到文件名: {}", encodedFilename);
+                            return Optional.of(encodedFilename);
+                        }
+                    }
+                }
+            } else {
+                Console.log("响应头中未找到 Content-Disposition 字段");
+            }
+        } catch (final Exception _) {
         }
+        // 2. 如果从头部获取失败，则尝试从 URL 路径解析
+        try {
+            // getPath 不包含查询参数和片段
+            final String path = URI.create(fileUrl).getPath();
+            if (path != null && !path.isEmpty() && !"/".equals(path)) {
+                final String fileName = Paths.get(path).getFileName().toString();
+                if (!fileName.isEmpty()) {
+                    Console.log("从 URL 路径提取到文件名: {}", fileName);
+                    return Optional.of(fileName);
+                }
+            }
+        } catch (final Exception _) {
+        }
+        // 3. 如果两种方式都失败，返回空 Optional
+        return Optional.empty();
     }
 
     /**
@@ -338,6 +412,8 @@ public class Downloader {
      */
     private void updateProgressOnCompletion(final String fileUrl) {
         Opt.ofNullable(progressMap.get(fileUrl)).ifPresent(DownloadProgress::markAsCompleted);
+        // 确保最后完成状态被打印一次
+        Opt.ofNullable(progressMap.get(fileUrl)).ifPresent(DownloadProgress::printProgressBar);
     }
 
     /**
@@ -388,6 +464,10 @@ public class Downloader {
          * 上次打印进度条时的完成状态缓存，用于避免重复打印
          */
         private volatile boolean lastPrintedCompletedStatus = Boolean.FALSE;
+        /**
+         * 上次打印进度条的时间戳 (毫秒)，用于控制打印频率
+         */
+        private volatile long lastPrintTimeMillis = 0;
 
         /**
          * 构造一个新地下载进度对象
@@ -402,25 +482,6 @@ public class Downloader {
             this.initialSize = initialSize;
             this.completed = Boolean.FALSE;
             this.totalFileSize = totalFileSize;
-        }
-
-        /**
-         * 将字节数格式化为人类可读的字符串 (例如 KB, MB, GB)
-         * @param bytes 字节数
-         * @return 格式化后的字符串
-         */
-        private static String formatBytes(final long bytes) {
-            if (bytes < 0) {
-                return "未知";
-            }
-            int unitIndex = 0;
-            double size = bytes;
-            final String[] units = {"B", "KB", "MB", "GB", "TB"};
-            while (size >= 1024.0 && unitIndex < units.length - 1) {
-                size /= 1024.0;
-                unitIndex++;
-            }
-            return String.format("%.2f %s", size, units[unitIndex]);
         }
 
         /**
@@ -447,14 +508,36 @@ public class Downloader {
         }
 
         /**
-         * 在控制台打印详细的进度条信息
-         * 此方法会检查进度或状态是否发生变化，仅在变化时才打印，避免重复输出。
+         * 将字节数格式化为人类可读的字符串 (例如 KB, MB, GB)
+         * @param bytes 字节数
+         * @return 格式化后的字符串
+         */
+        private static String formatBytes(final long bytes) {
+            if (bytes < 0) {
+                return "未知";
+            }
+            int unitIndex = 0;
+            double size = bytes;
+            final String[] units = {"B", "KB", "MB", "GB", "TB"};
+            while (size >= 1024.0 && unitIndex < units.length - 1) {
+                size /= 1024.0;
+                unitIndex++;
+            }
+            return String.format("%.2f %s", size, units[unitIndex]);
+        }
+
+        /**
+         * 控制台打印详细的进度条信息<br/>
+         * 此方法会检查进度或状态是否发生变化，并且距离上次打印至少过去了 PROGRESS_PRINT_INTERVAL_MILLIS 毫秒，<br/>
+         * 才会打印，避免过于频繁地重复输出。<br/>
          */
         public void printProgressBar() {
             final boolean currentCompletedStatus = this.completed;
+            final long currentTimeMillis = System.currentTimeMillis();
             final long currentTotalDownloaded = this.getTotalDownloadedBytesSoFar();
-            // 检查进度或完成状态是否与上次打印时不同
-            if (currentTotalDownloaded != this.lastPrintedTotalDownloadedBytes || currentCompletedStatus != this.lastPrintedCompletedStatus) {
+            // 检查进度或完成状态是否与上次打印时不同，并且时间间隔是否足够
+            if ((currentTotalDownloaded != this.lastPrintedTotalDownloadedBytes || currentCompletedStatus != this.lastPrintedCompletedStatus)
+                    && (currentTimeMillis - this.lastPrintTimeMillis >= PROGRESS_PRINT_INTERVAL_MILLIS || currentCompletedStatus)) {
                 if (currentCompletedStatus) {
                     // 下载完成时打印最终状态
                     Console.log("[{}] 下载完成。总大小: {}, 已下载: {}",
@@ -467,9 +550,10 @@ public class Downloader {
                     final String progressInfo = getProgressInfo(currentTotalDownloaded);
                     Console.log("[{}] {}", this.url, progressInfo);
                 }
-                // 更新缓存的打印状态，防止重复打印
-                this.lastPrintedTotalDownloadedBytes = currentTotalDownloaded;
+                // 更新缓存的打印状态和时间，防止重复打印
+                this.lastPrintTimeMillis = currentTimeMillis;
                 this.lastPrintedCompletedStatus = currentCompletedStatus;
+                this.lastPrintedTotalDownloadedBytes = currentTotalDownloaded;
             }
         }
 

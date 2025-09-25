@@ -93,7 +93,6 @@ public class ServerFileTest {
     @Test
     @DisplayName("Jre提取")
     public void jreFetcher() {
-        System.setProperty("java.net.preferIPv4Stack", "true");
         final Path path = JreFetcher.setupRuntime(
                 FileUtil.file("E:\\备份\\modpacks\\test\\Fabulously.Optimized-10.2.0-beta.6", ServerWorkspace.MANIFEST).toPath(),
                 FileUtil.file(ServerWorkspace.TEST_DIR).toPath()

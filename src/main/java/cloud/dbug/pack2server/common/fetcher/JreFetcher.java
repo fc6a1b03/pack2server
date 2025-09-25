@@ -12,7 +12,6 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -52,7 +51,7 @@ public class JreFetcher {
         // 清理路径
         FileUtil.del(downloadPath);
         // 获取Jre绝对路径
-        final Path jarPath = Downloader.fetchAll(List.of(jreUrl), downloadPath).get(jreUrl);
+        final Path jarPath = Downloader.fetch(jreUrl, downloadPath);
         if (Files.notExists(jarPath)) {
             Console.error("[JRE] 提取失败");
             return null;
