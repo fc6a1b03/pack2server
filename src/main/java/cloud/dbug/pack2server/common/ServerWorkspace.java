@@ -59,7 +59,7 @@ public class ServerWorkspace {
      * Java路径
      */
     public static final Function<Path, String> JAVA_PROGRAM = path ->
-            Path.of(Opt.ofNullable(path).map(item -> path.toAbsolutePath().normalize().toString())
+            Path.of(Opt.ofNullable(path).map(_ -> path.toAbsolutePath().normalize().toString())
                             .orElseGet(() -> System.getProperty("java.home")), "bin", "java")
                     .toAbsolutePath().normalize().toString();
     /**
