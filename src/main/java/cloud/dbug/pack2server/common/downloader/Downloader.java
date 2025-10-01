@@ -96,10 +96,12 @@ public class Downloader {
             final List<CompletableFuture<Map.Entry<String, Path>>> futures = urlList.stream().filter(StrUtil::isNotEmpty)
                     .map(url -> CompletableFuture.supplyAsync(() -> {
                                 try {
-                                    // --- 修改点：调用新的 extractFileName 方法 ---
-                                    final String fileName = extractFileName(url).orElse("downloaded_file_" + System.currentTimeMillis());
-                                    final Path targetPath = targetDirectory.resolve(fileName);
-                                    final Path resultPath = fetch(url, targetPath);
+                                    final Path resultPath = fetch(
+                                            url,
+                                            targetDirectory.resolve(
+                                                    extractFileName(url).orElse("downloaded_file_%d".formatted(System.currentTimeMillis()))
+                                            )
+                                    );
                                     return Map.entry(url, resultPath);
                                 } catch (final Exception e) {
                                     Console.error("无法从URL下载文件: {}", url, e);
@@ -131,15 +133,12 @@ public class Downloader {
     public Path fetch(final String fileUrl, final Path targetPath) {
         Console.log("开始下载: {} -> {}", fileUrl, targetPath);
         final long totalFileSize;
-        final boolean supportsRangeRequests;
+        boolean supportsRangeRequests;
         // --- 探测服务器支持情况 ---
         // 尝试发送 HEAD 请求
-        final HttpRequest headRequest = HttpRequest.newBuilder()
-                .uri(URI.create(fileUrl))
-                .timeout(TIMEOUT_DURATION)
-                .method("HEAD", HttpRequest.BodyPublishers.noBody())
-                .build();
-        final HttpResponse<Void> headResponse = httpClient.send(headRequest, HttpResponse.BodyHandlers.discarding());
+        final HttpResponse<Void> headResponse = httpClient.send(
+                HttpRequest.newBuilder().uri(URI.create(fileUrl)).timeout(TIMEOUT_DURATION).method("HEAD", HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.discarding()
+        );
         final int headStatusCode = headResponse.statusCode();
         if (headStatusCode == HttpURLConnection.HTTP_OK || headStatusCode == HttpURLConnection.HTTP_PARTIAL) {
             // 从 HEAD 响应中获取信息
@@ -150,17 +149,14 @@ public class Downloader {
                     .isPresent();
         } else {
             // 如果 HEAD 请求失败，尝试发送 GET 请求来探测
-            final HttpRequest getRequest = HttpRequest.newBuilder()
-                    .uri(URI.create(fileUrl))
-                    .timeout(TIMEOUT_DURATION)
-                    .build();
-            final HttpResponse<InputStream> getResponse = httpClient.send(getRequest, HttpResponse.BodyHandlers.ofInputStream());
+            final HttpResponse<InputStream> getResponse = httpClient.send(
+                    HttpRequest.newBuilder().uri(URI.create(fileUrl)).timeout(TIMEOUT_DURATION).build(), HttpResponse.BodyHandlers.ofInputStream()
+            );
             final int getStatusCode = getResponse.statusCode();
             if (getStatusCode == HttpURLConnection.HTTP_OK || getStatusCode == HttpURLConnection.HTTP_PARTIAL) {
                 // 从 GET 响应中获取信息
                 totalFileSize = getResponse.headers().firstValueAsLong("Content-Length").orElse(-1L);
-                supportsRangeRequests = getResponse.headers()
-                        .firstValue("Accept-Ranges")
+                supportsRangeRequests = getResponse.headers().firstValue("Accept-Ranges")
                         .filter(rangeType -> rangeType.equalsIgnoreCase("bytes"))
                         .isPresent();
                 IoUtil.close(getResponse.body());
@@ -168,6 +164,14 @@ public class Downloader {
                 Console.error("URL的初始探测请求失败: {}. HEAD: {}, GET: {}", fileUrl, headStatusCode, getStatusCode);
                 throw new IOException("未能探测服务器功能。头: %d, GET: %d".formatted(headStatusCode, getStatusCode));
             }
+        }
+        // 验证 Range 是否真正可用
+        if (supportsRangeRequests && totalFileSize > 0) {
+            final HttpResponse<Void> rangeProbeResponse = httpClient.send(
+                    HttpRequest.newBuilder().uri(URI.create(fileUrl)).timeout(TIMEOUT_DURATION).header("Range", "bytes=0-0").build(), HttpResponse.BodyHandlers.discarding()
+            );
+            supportsRangeRequests = rangeProbeResponse.statusCode() == HttpURLConnection.HTTP_PARTIAL
+                    && rangeProbeResponse.headers().firstValue("Content-Range").orElse("").startsWith("bytes 0-0/");
         }
         // --- 初始化进度跟踪 ---
         initializeProgress(fileUrl, targetPath, totalFileSize);
@@ -186,7 +190,6 @@ public class Downloader {
         Console.log("下载完成：{} -> {}", fileUrl, targetPath);
         return targetPath;
     }
-
 
     /**
      * 使用多线程并发下载单个文件
@@ -323,7 +326,7 @@ public class Downloader {
                 if (matcher.find()) {
                     // group(1) 匹配的是引号内的内容
                     String encodedFilename = matcher.group(1);
-                    if (encodedFilename != null && !encodedFilename.isEmpty()) {
+                    if (StrUtil.isNotEmpty(encodedFilename)) {
                         // 处理 filename*=utf-8''encoded name 形式 (RFC 5987)
                         if (contentDisposition.contains("filename*=")) {
                             // 示例: filename*=UTF-8''%e6%b5%8b%e8%af%95.txt

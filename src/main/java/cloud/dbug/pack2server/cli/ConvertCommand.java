@@ -118,16 +118,17 @@ public class ConvertCommand implements Callable<Integer> {
         final Path jrePath = JreFetcher.setupRuntime(manifestPath, serverOutputDir);
         logStage("Stage-7 运行环境释放完成，总耗时=%s".formatted(Duration.between(start, Instant.now())), start);
         /* 8. 生成加载器 & 启动脚本 */
-        // TODO: 命令待阻塞，必须百分百执行完成才可继续往下走
+        logStage("Stage-8 初次运行服务", start);
         final LoaderFetcher.Loader loader = LoaderFetcher.exec(manifestPath, serverOutputDir);
-        logStage("Stage-8 加载器生成完成，启动脚本写出结果=%s".formatted(loader.startByProcess(jrePath)), start);
+        loader.startAndWait(jrePath);
         /* 9. 清理临时解压目录 */
         FileUtil.del(extractDir.toFile());
         logStage("Stage-9 临时目录清理完成，总耗时=%s".formatted(Duration.between(start, Instant.now())), start);
         /* 10. 打印运行脚本 */
-        logStage("Stage-10 加载器=%s\n运行命令=%s".formatted(loader, loader.cmd(jrePath)), start);
+        logStage("Stage-10 加载器=%s\n运行命令=%s".formatted(loader, loader.buildStartCommand(jrePath)), start);
         /* 11. 释放许可 及 清理目录 */
         ServerWorkspace.LICENSE.accept(serverOutputDir);
+        logStage("Stage-11 已完成转换~", start);
         return 0;
     }
 }

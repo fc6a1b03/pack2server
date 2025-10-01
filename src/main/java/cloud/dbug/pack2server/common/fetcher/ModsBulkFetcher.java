@@ -3,6 +3,7 @@ package cloud.dbug.pack2server.common.fetcher;
 import cloud.dbug.pack2server.common.ServerWorkspace;
 import cloud.dbug.pack2server.common.downloader.Downloader;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.lang.Console;
 import cn.hutool.core.lang.Opt;
 import cn.hutool.core.util.StrUtil;
@@ -56,7 +57,10 @@ public class ModsBulkFetcher {
             Console.log("[Mods] 清单文件不存在，任务终止 | path={}", manifest.toAbsolutePath());
             return;
         }
+        // 整理目录
         ServerWorkspace.ensure(saveDir);
+        // 清理目录
+        FileUtil.clean(saveDir.toFile());
         // 解析模组
         final List<Mod> mods = parseMods(manifest);
         Console.log("[MODS] 模组清单，解析完成 | mods={}", mods.size());

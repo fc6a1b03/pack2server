@@ -19,7 +19,7 @@ public class DownloaderTest {
     @Test
     @DisplayName("单个下载")
     public void single() {
-        final String url = "https://repo1.maven.org/maven2/info/picocli/picocli/4.7.7/picocli-4.7.7.jar";
+        final String url = "https://edge.forgecdn.net/files/6724/592/paginatedadvancements-2.7.0%2b1.21.7.jar";
         Downloader.fetch(url, FileUtil.file(ServerWorkspace.USER_HOME, ServerWorkspace.TEMP, ServerWorkspace.parseFileName(url)).toPath());
     }
 
