@@ -125,7 +125,7 @@ public class ConvertCommand implements Callable<Integer> {
         FileUtil.del(extractDir.toFile());
         logStage("Stage-9 临时目录清理完成，总耗时=%s".formatted(Duration.between(start, Instant.now())), start);
         /* 10. 打印运行脚本 */
-        logStage("Stage-10 加载器=%s\n运行命令=%s".formatted(loader, loader.buildStartCommand(jrePath)), start);
+        logStage("Stage-10 加载器=%s\n运行命令=%s".formatted(loader, String.join(" ", loader.buildStartCommand(jrePath))), start);
         /* 11. 释放许可 及 清理目录 */
         ServerWorkspace.LICENSE.accept(serverOutputDir);
         logStage("Stage-11 已完成转换~", start);
